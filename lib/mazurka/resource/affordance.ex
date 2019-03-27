@@ -73,7 +73,7 @@ defmodule Mazurka.Resource.Affordance do
               :ok ->
                 __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
             end
-          {missing, _} when length(missing) > 0 ->
+          {[_ | _] = missing, _} ->
             raise Mazurka.MissingParametersException, params: missing, conn: unquote(Utils.conn())
           _ ->
             %Mazurka.Affordance.Undefined{resource: __MODULE__,

@@ -8,7 +8,7 @@ defmodule Mazurka.Mixfile do
      description: "hypermedia api toolkit",
      test_coverage: [tool: ExCoveralls],
      preferred_cli_env: [
-       "coveralls": :test,
+       coveralls: :test,
        "coveralls.circle": :test,
        "coveralls.detail": :test,
        "coveralls.html": :test
