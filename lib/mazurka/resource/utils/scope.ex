@@ -71,6 +71,8 @@ defmodule Mazurka.Resource.Utils.Scope do
     vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
     assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
     quote do
+      var!(conn) = unquote(Utils.conn)
+      _ = var!(conn)
       {unquote_splicing(vars)} = unquote(Utils.scope)
       unquote_splicing(assigns)
     end

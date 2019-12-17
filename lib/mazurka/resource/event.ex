@@ -30,6 +30,7 @@ defmodule Mazurka.Resource.Event do
     quote do
       defp __mazurka_event__(var!(action), unquote_splicing(Utils.arguments), unquote(Utils.scope), unquote(Utils.mediatype)) do
         var!(conn) = unquote(Utils.conn)
+        _ = var!(conn)
         Mazurka.Resource.Utils.Scope.dump()
         unquote_splicing(events)
         {var!(action), var!(conn)}
