@@ -59,7 +59,8 @@ defmodule Mazurka.Resource do
           nil ->
             raise Mazurka.UnacceptableContentTypeException, [
               content_type: content_types,
-              acceptable: __mazurka_acceptable_content_types__()
+              acceptable: __mazurka_acceptable_content_types__(),
+              conn: unquote(Utils.conn)
             ]
           content_type ->
             {response, conn} = action(content_type, unquote_splicing(Utils.arguments))
@@ -85,7 +86,8 @@ defmodule Mazurka.Resource do
           nil ->
             raise Mazurka.UnacceptableContentTypeException, [
               content_type: content_types,
-              acceptable: __mazurka_acceptable_content_types__()
+              acceptable: __mazurka_acceptable_content_types__(),
+              conn: unquote(Utils.conn)
             ]
           content_type ->
             response = affordance(content_type, unquote_splicing(Utils.arguments))
