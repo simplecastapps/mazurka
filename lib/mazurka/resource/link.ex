@@ -108,6 +108,7 @@ defmodule Mazurka.Resource.Link do
         unquote(Utils.router),
         unquote(opts)
       )
+      |> Map.get(:path)
 
       var!(conn) = Mazurka.Conn.invalidate(conn, target)
 
