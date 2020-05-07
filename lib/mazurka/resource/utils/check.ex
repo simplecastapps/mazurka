@@ -34,7 +34,7 @@ defmodule Mazurka.Resource.Utils.Check do
       defp to_quoted(block, message) do
         check = unquote(mazurka_check)
         quote location: :keep do
-          Module.put_attribute(__MODULE__, unquote(check), {unquote(Macro.escape(block)), unquote(message)})
+          Module.put_attribute(__MODULE__, unquote(check), {unquote(Macro.escape(block)), unquote(Macro.escape(message))})
         end
       end
 
