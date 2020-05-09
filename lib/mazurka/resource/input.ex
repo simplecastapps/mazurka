@@ -32,9 +32,11 @@ defmodule Mazurka.Resource.Input do
   """
 
   defmacro input(name, block \\ []) do
+    IO.puts("input macro called")
     bin_name = name |> elem(0) |> to_string()
     %{module: module} = __CALLER__
     Module.put_attribute(module, :mazurka_inputs, bin_name)
+    Module.put_attribute(module, :operations, {:input, bin_name})
     Scope.define(Utils.input, name, block)
   end
 end

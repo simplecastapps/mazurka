@@ -40,6 +40,7 @@ defmodule Mazurka.Resource.Param do
     %{module: module} = __CALLER__
     Module.put_attribute(module, :mazurka_params, bin_name)
     Module.put_attribute(module, :mazurka_param_checks, bin_name)
+    Module.put_attribute(module, :operations, {:param, bin_name})
     Scope.define(Utils.params, name, block)
   end
 

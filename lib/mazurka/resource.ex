@@ -19,6 +19,7 @@ defmodule Mazurka.Resource do
     attr = :__mazurka_resource__
     if !Module.get_attribute(module, attr) do
       Module.put_attribute(module, attr, true)
+      Module.register_attribute(module, :operations, accumulate: true)
       quote do
         @before_compile unquote(__MODULE__)
 
