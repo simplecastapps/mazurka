@@ -42,12 +42,12 @@ defmodule Mazurka.Resource do
     operations = Module.get_attribute(env.module,:operations) |> IO.inspect(label: "operations")
     scope_splice = operations
        |> Enum.filter(fn
-         {_type, {:assign, _type, _name}} -> true
+         {_type, {:assign, _assign_type, _name}} -> true
          {_type, {:run, _name, _}} -> true
          _ -> false
        end)
        |> Enum.map(fn
-         {_type, {:assign, _type, name}} -> name
+         {_type, {:assign, _assign_type, name}} -> name
          {_type, {:run, name, _}} -> name
        end)
        |> Enum.uniq
@@ -87,7 +87,7 @@ defmodule Mazurka.Resource do
 
         # run a function and assign it to this variable (lets)
         {:run, name, block} ->
-            var = Macro.var(name, nil) |> IO.inspect(label: "running")
+            var = Macro.var(name, nil)
             quote do
               unquote(var) = unquote(block)
               unquote(parent)
@@ -96,7 +96,7 @@ defmodule Mazurka.Resource do
           # run a function on this variable with itself as argument and reassign its value
           # (inputs / params with functions)
           {:run_self, name, block} ->
-            var = Macro.var(name, nil) |> IO.inspect(label: "running")
+            var = Macro.var(name, nil)
             quote do
               unquote(var) = unquote(block).(unquote(var))
               unquote(parent)
