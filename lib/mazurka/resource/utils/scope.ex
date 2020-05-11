@@ -6,7 +6,7 @@ defmodule Mazurka.Resource.Utils.Scope do
     defmacro __using__(_) do
       quote do
         Module.register_attribute(__MODULE__, :mazurka_scope, accumulate: true)
-        @before_compile unquote(__MODULE__)
+        #@before_compile unquote(__MODULE__)
       end
     end
 
@@ -39,26 +39,26 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  defmacro __before_compile__(env) do
-    scope = Module.get_attribute(env.module, :mazurka_scope) |> :lists.reverse()
-    values = Enum.flat_map(scope, fn({name, code}) ->
-      var = Macro.var(name, nil)
-      quote do
-        unquote(var) = unquote(code)
-        _ = unquote(var)
-      end
-      |> elem(2)
-      end)
-    map = scope |> Enum.map(fn({n, _}) -> Macro.var(n, nil) end)
-    quote do
-      defp __mazurka_scope__(unquote(Utils.mediatype), unquote_splicing(Utils.arguments)) do
-        var!(conn) = unquote(Utils.conn)
-        _ = var!(conn)
-        unquote_splicing(values)
-        {unquote_splicing(map)}
-      end
-    end
-  end
+  #  defmacro __before_compile__(env) do
+  #    scope = Module.get_attribute(env.module, :mazurka_scope) |> :lists.reverse()
+  #    values = Enum.flat_map(scope, fn({name, code}) ->
+  #      var = Macro.var(name, nil)
+  #      quote do
+  #        unquote(var) = unquote(code)
+  #        _ = unquote(var)
+  #      end
+  #      |> elem(2)
+  #      end)
+  #    map = scope |> Enum.map(fn({n, _}) -> Macro.var(n, nil) end)
+  #    quote do
+  #      defp __mazurka_scope__(unquote(Utils.mediatype), unquote_splicing(Utils.arguments)) do
+  #        var!(conn) = unquote(Utils.conn)
+  #        _ = var!(conn)
+  #        unquote_splicing(values)
+  #        {unquote_splicing(map)}
+  #      end
+  #    end
+  #  end
 
   def compile(name, block) do
     quote do

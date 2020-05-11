@@ -40,47 +40,127 @@ defmodule Mazurka.Resource do
   defmacro __before_compile__(env) do
 
     operations = Module.get_attribute(env.module,:operations) |> IO.inspect(label: "operations")
-    action_operations = operations |> Enum.map(fn {_type, op} -> op end)
+    scope_splice = operations
+       |> Enum.filter(fn
+         {_type, {:assign, _type, _name}} -> true
+         {_type, {:run, _name, _}} -> true
+         _ -> false
+       end)
+       |> Enum.map(fn
+         {_type, {:assign, _type, name}} -> name
+         {_type, {:run, name, _}} -> name
+       end)
+       |> Enum.uniq
+       |> Enum.reduce(quote do %{} end, fn name, accum ->
+           quote do
+            unquote(accum) |> Map.put(unquote(name), unquote(Macro.var(name, nil)))
+          end
+        end)
 
-    affordance_operations = operations |> Enum.filter(fn 
+    affordance_operations = operations |> Enum.filter(fn
         {type, _op} when type in [:param, :input, :let, :condition, :validation] -> true
         _ -> false
     end)
-    |> Enum.map(fn {_type, op} -> op end)
-    |> Enum.reduce(:ok, fn instruction, parent ->
 
-      # assign a variable with this name
+    [affordance_op_splice, action_op_splice] = [affordance_operations, operations]
+    |> Enum.map(fn operations ->
+      operations
+        |> Enum.map(fn {_type, op} -> op end)
+        |> Enum.reduce(quote do {:ok, unquote(scope_splice)} end, fn instruction, parent ->
+
+      # assign a variable with this name from runtime (inputs / params)
       case instruction do
-        {:assign, name} ->
-          var = Macro.var(name, __MODULE__)
+        {:assign, type, name} ->
+
+          # I still don't understand how scope assigns work, but this seems to be correct
+          mod = case type do
+            :input -> Mazurka.Resource.Input
+            :param -> Mazurka.Resource.Param
+          end
+
+          var = Macro.var(name, nil)
           quote do
-            unquote(var) = unquote(Utils.params)[unquote(name) |> Atom.to_string()]
+            unquote(var) = unquote(mod).get(unquote(name) |> Atom.to_string())
             unquote(parent)
             # TODO fix unused warning
         end
 
-      # run a function on this variable and reassign its value
+        # run a function and assign it to this variable (lets)
         {:run, name, block} ->
-          var = Macro.var(name, __MODULE__)
-          quote do
-            unquote(var) = unquote(block).(unquote(var))
-            #IO.puts("run #{unquote(var)}")
-        end
-
-        # run a check on a block, and if succeeds, continue else error message
-        {:check, block, message} ->
-          quote do
-            if (unquote(block)) do
+            var = Macro.var(name, nil) |> IO.inspect(label: "running")
+            quote do
+              unquote(var) = unquote(block)
               unquote(parent)
-            else
-              {:error, unquote(message)}
+              #IO.puts("run self #{unquote(var)}")
             end
+          # run a function on this variable with itself as argument and reassign its value
+          # (inputs / params with functions)
+          {:run_self, name, block} ->
+            var = Macro.var(name, nil) |> IO.inspect(label: "running")
+            quote do
+              unquote(var) = unquote(block).(unquote(var))
+              unquote(parent)
+              #IO.puts("run #{unquote(var)}")
           end
-        _ -> parent
-     end
+
+          # run a check on a block of code, and if succeeds, continue else error message
+          # (validation, condition)
+          {:check, block, message} ->
+            quote do
+              if (unquote(block)) do
+                unquote(parent)
+              else
+                {:error, unquote(message)}
+              end
+            end
+          err -> raise "This should not be reachable #{(inspect(err))}"
+       end
+      end)
     end)
 
     quote location: :keep do
+
+      # param input, some_fn/1
+      # validation true && param1, "fail1"
+      # param input2, some_fn2/1
+      # condition param1 && param2, "fail2"
+      # let foo = if !param1 do raise "unreachable error" else some_fn3(param1) end
+
+      # expands to a function like
+
+      #    param1 = "123"
+      #    param1 = some_fn.(param1)
+      #
+      #    if true && param1 do
+      #      param2 = "asdf"
+      #      param2 = some_fn2.(param2)
+      #      if param1 && param2 do
+      #        foo = if !param1 do raise "unreachable error" else some_fn3(param1) end
+      #        {:ok,
+      #          %{}
+      #          |> Map.put(:param1, param1)
+      #          |> Map.put(:param2, param2)
+      #          |> Map.put(:foo, foo)
+      #        }
+      #      else
+      #        {:error, "fail2"}
+      #      end
+      #    else
+      #      {:error, "fail1"}
+      #    end
+
+      # The returned map is all the variables that have been set if no checks
+      # failed.  Note that everything is evaluated in order, if a check
+      # fails nothing after that failure will have been executed.
+
+     defp __mazurka_evaluate_affordance__(unquote_splicing(Utils.arguments)) do
+       unquote(affordance_op_splice)
+     end
+
+     defp __mazurka_evaluate_action__(unquote_splicing(Utils.arguments)) do
+       unquote(action_op_splice)
+     end
+
       @doc """
       Execute a request against the #{inspect(__MODULE__)} resource
 
@@ -125,7 +205,6 @@ defmodule Mazurka.Resource do
       def affordance(accept, params, input, conn, router \\ nil, opts \\ %{})
 
       def affordance(content_types, unquote_splicing(Utils.arguments)) when is_list(content_types) do
-
         case __mazurka_select_content_type__(content_types) do
           nil ->
             raise Mazurka.UnacceptableContentTypeException, [
@@ -137,47 +216,6 @@ defmodule Mazurka.Resource do
             response = affordance(content_type, unquote_splicing(Utils.arguments))
             {response, content_type}
         end
-      end
-
-      def affordance(content_type = {_, _, _}, unquote_splicing(Utils.arguments)) do
-        case __mazurka_provide_content_type__(content_type) do
-          nil ->
-            %Mazurka.Affordance.Unacceptable{resource: __MODULE__,
-                                             params: unquote(Utils.params),
-                                             input: unquote(Utils.input),
-                                             opts: unquote(Utils.opts)}
-          mediatype ->
-            affordance(mediatype, unquote_splicing(Utils.arguments))
-        end
-      end
-
-
-      def affordance(mediatype, unquote_splicing(Utils.arguments)) when is_atom(mediatype) do
-        case __mazurka_check_params__(unquote(Utils.params)) do
-          {[], []} ->
-            unquote(affordance_operations) |> case do
-              {:error, _} ->
-                %Mazurka.Affordance.Undefined{
-                  resource: __MODULE__,
-                  mediatype: mediatype,
-                  params: unquote(Utils.params),
-                  input: unquote(Utils.input),
-                  opts: unquote(Utils.opts)
-                }
-              :ok ->
-                __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
-            end
-
-          {[_ | _] = missing, _} ->
-            raise Mazurka.MissingParametersException, params: missing, conn: unquote(Utils.conn())
-          _ ->
-            %Mazurka.Affordance.Undefined{resource: __MODULE__,
-                                          mediatype: mediatype,
-                                          params: unquote(Utils.params),
-                                          input: unquote(Utils.input),
-                                          opts: unquote(Utils.opts)}
-        end
-
       end
     end
   end

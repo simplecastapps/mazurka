@@ -34,10 +34,10 @@ defmodule Mazurka.Resource.Input do
   defmacro input({name,_,_}, block \\ nil) do
     bin_name = name |> to_string()
     %{module: module} = __CALLER__
-    Module.put_attribute(module, :mazurka_inputs, bin_name)
-    Module.put_attribute(module, :operations, {:input, {:assign, name}})
+    #Module.put_attribute(module, :mazurka_inputs, bin_name)
+    Module.put_attribute(module, :operations, {:input, {:assign, :input, name}})
     if block do
-      Module.put_attribute(module, :operations, {:input, {:run, name, block}})
+      Module.put_attribute(module, :operations, {:input, {:run_self, name, block}})
     end
     Scope.define(Utils.input, name, block)
   end
