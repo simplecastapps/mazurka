@@ -16,9 +16,10 @@ defmodule Test.Mazurka.Resource.Me do
       # 2 in actions
       #   params, inputs, conditions, validations interleaved
       # 2 in affordances
-      #   params, inputs, conditions, interleaved
+      #   params, inputs, conditions interleaved
 
       param param1, (fn param1 -> IO.puts("\nparam param1"); param1 end)
+      param param2, (fn param2 -> IO.puts("\nparam param2"); param2 end)
       input foo1, (fn foo1 -> IO.puts("input foo1"); foo1 end)
 
       validation (IO.puts("validation"); foo1 == "123"), "some_error"
@@ -40,16 +41,29 @@ defmodule Test.Mazurka.Resource.Me do
         end
       end
     end
+    router Router do
+      route "GET", ["param1", :param1], Foo
+    end
   after
-    "mixed lets conditions - no error" ->
+    "action - mixed lets conditions - no error" ->
 
-      {body, content_type, _} = Foo.action([], %{"param1" => "asdf"}, %{"foo1" => "123"}, %{})
+      {body, content_type, _} = Foo.action([], %{"param1" => "asdf", "param2" => "param2"}, %{"foo1" => "123"}, %{})
       assert {"application", "json", %{}} = content_type
     assert %{
       "foo1" => "123",
       "foo2" => 123,
       "foo3" => "123"
     } == body
+
+    "affordance mixed lets conditions - no error" ->
+
+      {body, content_type} = Foo.affordance([], %{"param1" => "asdf", "param2" => "param2"}, %{"foo1" => "123"}, %{}, Router)
+      assert {"application", "json", %{}} = content_type
+    assert %{
+      "href" => "/param1/asdf?foo1=123",
+    } == body
+
+
 
     #    "mixed lets conditions - current condition failure" ->
     #      try do

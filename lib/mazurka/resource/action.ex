@@ -59,14 +59,14 @@ defmodule Mazurka.Resource.Action do
           mediatype ->
             case __mazurka_check_params__(unquote(Utils.params)) do
               {[], []} ->
-                scope = __mazurka_scope__(mediatype, unquote_splicing(Utils.arguments))
-                case __mazurka_conditions__(unquote_splicing(Utils.arguments), scope) do
+                scope = __mazurka_scope__(mediatype, unquote_splicing(Utils.arguments)) |> IO.inspect(label: "scope_action")
+                case __mazurka_conditions__(0, unquote_splicing(Utils.arguments), scope) do
                   {:error, %{:__struct__ => _} = exception} ->
                     raise exception
                   {:error, message} ->
                     raise Mazurka.ConditionException, message: message, conn: unquote(Utils.conn)
                   :ok ->
-                    case __mazurka_validations__(unquote_splicing(Utils.arguments), scope) do
+                    case __mazurka_validations__(0, unquote_splicing(Utils.arguments), scope) do
                       {:error, message} ->
                         raise Mazurka.ValidationException, message: message, conn: unquote(Utils.conn)
                       :ok ->

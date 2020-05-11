@@ -3,12 +3,12 @@ defmodule Mazurka.Resource.Utils.Scope do
 
   alias Mazurka.Resource.Utils
 
-  defmacro __using__(_) do
-    quote do
-      Module.register_attribute(__MODULE__, :mazurka_scope, accumulate: true)
-      @before_compile unquote(__MODULE__)
+    defmacro __using__(_) do
+      quote do
+        Module.register_attribute(__MODULE__, :mazurka_scope, accumulate: true)
+        @before_compile unquote(__MODULE__)
+      end
     end
-  end
 
   def define(var, name, block, type \\ :binary)
   def define(var, {name, _, _}, block, type) when is_atom(name) do
@@ -48,8 +48,8 @@ defmodule Mazurka.Resource.Utils.Scope do
         _ = unquote(var)
       end
       |> elem(2)
-    end)
-    map = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
+      end)
+    map = scope |> Enum.map(fn({n, _}) -> Macro.var(n, nil) end)
     quote do
       defp __mazurka_scope__(unquote(Utils.mediatype), unquote_splicing(Utils.arguments)) do
         var!(conn) = unquote(Utils.conn)
@@ -67,14 +67,14 @@ defmodule Mazurka.Resource.Utils.Scope do
   end
 
   defmacro dump() do
-    scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> :lists.reverse()
-    vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
-    assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
-    quote do
-      var!(conn) = unquote(Utils.conn)
-      _ = var!(conn)
-      {unquote_splicing(vars)} = unquote(Utils.scope)
-      unquote_splicing(assigns)
-    end
+        scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> :lists.reverse()
+        vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
+        assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
+        quote do
+          var!(conn) = unquote(Utils.conn)
+          _ = var!(conn)
+          {unquote_splicing(vars)} = unquote(Utils.scope)
+          unquote_splicing(assigns)
+        end
   end
 end

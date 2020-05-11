@@ -37,7 +37,49 @@ defmodule Mazurka.Resource do
     end
   end
 
-  defmacro __before_compile__(_) do
+  defmacro __before_compile__(env) do
+
+    operations = Module.get_attribute(env.module,:operations) |> IO.inspect(label: "operations")
+    action_operations = operations |> Enum.map(fn {_type, op} -> op end)
+
+    affordance_operations = operations |> Enum.filter(fn 
+        {type, _op} when type in [:param, :input, :let, :condition, :validation] -> true
+        _ -> false
+    end)
+    |> Enum.map(fn {_type, op} -> op end)
+    |> Enum.reduce(:ok, fn instruction, parent ->
+
+      # assign a variable with this name
+      case instruction do
+        {:assign, name} ->
+          var = Macro.var(name, __MODULE__)
+          quote do
+            unquote(var) = unquote(Utils.params)[unquote(name) |> Atom.to_string()]
+            unquote(parent)
+            # TODO fix unused warning
+        end
+
+      # run a function on this variable and reassign its value
+        {:run, name, block} ->
+          var = Macro.var(name, __MODULE__)
+          quote do
+            unquote(var) = unquote(block).(unquote(var))
+            #IO.puts("run #{unquote(var)}")
+        end
+
+        # run a check on a block, and if succeeds, continue else error message
+        {:check, block, message} ->
+          quote do
+            if (unquote(block)) do
+              unquote(parent)
+            else
+              {:error, unquote(message)}
+            end
+          end
+        _ -> parent
+     end
+    end)
+
     quote location: :keep do
       @doc """
       Execute a request against the #{inspect(__MODULE__)} resource
@@ -83,6 +125,7 @@ defmodule Mazurka.Resource do
       def affordance(accept, params, input, conn, router \\ nil, opts \\ %{})
 
       def affordance(content_types, unquote_splicing(Utils.arguments)) when is_list(content_types) do
+
         case __mazurka_select_content_type__(content_types) do
           nil ->
             raise Mazurka.UnacceptableContentTypeException, [
@@ -94,6 +137,47 @@ defmodule Mazurka.Resource do
             response = affordance(content_type, unquote_splicing(Utils.arguments))
             {response, content_type}
         end
+      end
+
+      def affordance(content_type = {_, _, _}, unquote_splicing(Utils.arguments)) do
+        case __mazurka_provide_content_type__(content_type) do
+          nil ->
+            %Mazurka.Affordance.Unacceptable{resource: __MODULE__,
+                                             params: unquote(Utils.params),
+                                             input: unquote(Utils.input),
+                                             opts: unquote(Utils.opts)}
+          mediatype ->
+            affordance(mediatype, unquote_splicing(Utils.arguments))
+        end
+      end
+
+
+      def affordance(mediatype, unquote_splicing(Utils.arguments)) when is_atom(mediatype) do
+        case __mazurka_check_params__(unquote(Utils.params)) do
+          {[], []} ->
+            unquote(affordance_operations) |> case do
+              {:error, _} ->
+                %Mazurka.Affordance.Undefined{
+                  resource: __MODULE__,
+                  mediatype: mediatype,
+                  params: unquote(Utils.params),
+                  input: unquote(Utils.input),
+                  opts: unquote(Utils.opts)
+                }
+              :ok ->
+                __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
+            end
+
+          {[_ | _] = missing, _} ->
+            raise Mazurka.MissingParametersException, params: missing, conn: unquote(Utils.conn())
+          _ ->
+            %Mazurka.Affordance.Undefined{resource: __MODULE__,
+                                          mediatype: mediatype,
+                                          params: unquote(Utils.params),
+                                          input: unquote(Utils.input),
+                                          opts: unquote(Utils.opts)}
+        end
+
       end
     end
   end

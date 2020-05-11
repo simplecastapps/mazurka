@@ -16,6 +16,8 @@ defmodule Mazurka.Resource.Let do
   """
 
   defmacro let({:=, _, [{name, _, _}, block]}) when is_atom(name) do
+    %{module: module} = __CALLER__
+    Module.put_attribute(module, :operations, {:let, {:run, name, block}})
     Scope.compile(name, block)
   end
 
@@ -29,6 +31,8 @@ defmodule Mazurka.Resource.Let do
   """
 
   defmacro let({name, _, _}, [do: block]) when is_atom(name) do
+    %{module: module} = __CALLER__
+    Module.put_attribute(module, :operations, {:let, {:run, name, block}})
     Scope.compile(name, block)
   end
 end

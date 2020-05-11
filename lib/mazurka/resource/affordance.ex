@@ -48,41 +48,42 @@ defmodule Mazurka.Resource.Affordance do
 
   defmacro __before_compile__(_) do
     quote location: :keep do
-      def affordance(content_type = {_, _, _}, unquote_splicing(Utils.arguments)) do
-        case __mazurka_provide_content_type__(content_type) do
-          nil ->
-            %Mazurka.Affordance.Unacceptable{resource: __MODULE__,
-                                             params: unquote(Utils.params),
-                                             input: unquote(Utils.input),
-                                             opts: unquote(Utils.opts)}
-          mediatype ->
-            affordance(mediatype, unquote_splicing(Utils.arguments))
-        end
-      end
-      def affordance(mediatype, unquote_splicing(Utils.arguments)) when is_atom(mediatype) do
-        case __mazurka_check_params__(unquote(Utils.params)) do
-          {[], []} ->
-            scope = __mazurka_scope__(mediatype, unquote_splicing(Utils.arguments))
-            case __mazurka_conditions__(unquote_splicing(Utils.arguments), scope) do
-              {:error, _} ->
-                %Mazurka.Affordance.Undefined{resource: __MODULE__,
-                                              mediatype: mediatype,
-                                              params: unquote(Utils.params),
-                                              input: unquote(Utils.input),
-                                              opts: unquote(Utils.opts)}
-              :ok ->
-                __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
-            end
-          {[_ | _] = missing, _} ->
-            raise Mazurka.MissingParametersException, params: missing, conn: unquote(Utils.conn())
-          _ ->
-            %Mazurka.Affordance.Undefined{resource: __MODULE__,
-                                          mediatype: mediatype,
-                                          params: unquote(Utils.params),
-                                          input: unquote(Utils.input),
-                                          opts: unquote(Utils.opts)}
-        end
-      end
+      #      def affordance(content_type = {_, _, _}, unquote_splicing(Utils.arguments)) do
+      #        case __mazurka_provide_content_type__(content_type) do
+      #          nil ->
+      #            %Mazurka.Affordance.Unacceptable{resource: __MODULE__,
+      #                                             params: unquote(Utils.params),
+      #                                             input: unquote(Utils.input),
+      #                                             opts: unquote(Utils.opts)}
+      #          mediatype ->
+      #            affordance(mediatype, unquote_splicing(Utils.arguments))
+      #        end
+      #      end
+      #
+      #      def affordance(mediatype, unquote_splicing(Utils.arguments)) when is_atom(mediatype) do
+      #        case __mazurka_check_params__(unquote(Utils.params)) do
+      #          {[], []} ->
+      #            scope = __mazurka_scope__(mediatype, unquote_splicing(Utils.arguments))
+      #            case __mazurka_conditions__(0, unquote_splicing(Utils.arguments), scope) do
+      #              {:error, _} ->
+      #                %Mazurka.Affordance.Undefined{resource: __MODULE__,
+      #                                              mediatype: mediatype,
+      #                                              params: unquote(Utils.params),
+      #                                              input: unquote(Utils.input),
+      #                                              opts: unquote(Utils.opts)}
+      #              :ok ->
+      #                __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
+      #            end
+      #          {[_ | _] = missing, _} ->
+      #            raise Mazurka.MissingParametersException, params: missing, conn: unquote(Utils.conn())
+      #          _ ->
+      #            %Mazurka.Affordance.Undefined{resource: __MODULE__,
+      #                                          mediatype: mediatype,
+      #                                          params: unquote(Utils.params),
+      #                                          input: unquote(Utils.input),
+      #                                          opts: unquote(Utils.opts)}
+      #        end
+      #      end
 
       defp __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope) do
         __mazurka_default_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)

@@ -35,12 +35,15 @@ defmodule Mazurka.Resource.Param do
       end
   """
 
-  defmacro param(name, block \\ []) do
-    bin_name = name |> elem(0) |> to_string()
+  defmacro param({name,_,_}, block \\ nil) do
+    bin_name = name |> to_string()
     %{module: module} = __CALLER__
     Module.put_attribute(module, :mazurka_params, bin_name)
     Module.put_attribute(module, :mazurka_param_checks, bin_name)
-    Module.put_attribute(module, :operations, {:param, bin_name})
+    Module.put_attribute(module, :operations, {:param, {:assign, name}})
+    if block do
+      Module.put_attribute(module, :operations, {:param, {:run, name, block}})
+    end
     Scope.define(Utils.params, name, block)
   end
 
