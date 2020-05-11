@@ -39,7 +39,7 @@ defmodule Mazurka.Resource do
 
   defmacro __before_compile__(env) do
 
-    operations = Module.get_attribute(env.module,:operations) |> IO.inspect(label: "operations")
+    operations = Module.get_attribute(env.module,:operations)
     scope_splice = operations
        |> Enum.filter(fn
          {_type, {:assign, _assign_type, _name}} -> true
