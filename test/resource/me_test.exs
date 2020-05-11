@@ -34,9 +34,11 @@ defmodule Test.Mazurka.Resource.Me do
       mediatype Hyper do
         action do
           %{
-                  "foo1" => foo1,
+            "foo1" => foo1,
             "foo2" => foo2,
-            "foo3" => foo3
+            "foo3" => foo3,
+            "param1" => param1,
+            "param2" => param2
           }
         end
       end
