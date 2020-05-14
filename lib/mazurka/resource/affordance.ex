@@ -65,7 +65,7 @@ defmodule Mazurka.Resource.Affordance do
             case __mazurka_scope_check__(:affordance, mediatype, unquote_splicing(Utils.arguments)) do
               {:no_error, scope} ->
                 __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
-              wtf ->
+              _ ->
                %Mazurka.Affordance.Undefined{resource: __MODULE__,
                                            mediatype: mediatype,
                                            params: unquote(Utils.params),
