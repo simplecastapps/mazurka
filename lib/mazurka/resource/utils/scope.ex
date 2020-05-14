@@ -69,11 +69,17 @@ defmodule Mazurka.Resource.Utils.Scope do
         end |> elem(2)
 
       {:check, {check_type, condition, error_code}} ->
+
+        # This avoids a "this check/guard will always yield the same result"
+        # warning during compilation when making use of validations
+        tcheck = if check_type == :validation do
+            quote do: resource_type == :affordance
+          else
+            quote do: false
+          end
         quote do
           mazurka_error__ = 
-            if (mazurka_error__ != :no_error ||
-              (unquote(check_type) == :validation && resource_type == :affordance)
-              ) do
+            if (mazurka_error__ != :no_error || unquote(tcheck)) do
               mazurka_error__
             else
               if (unquote(condition)) do
