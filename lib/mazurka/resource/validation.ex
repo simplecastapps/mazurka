@@ -4,6 +4,6 @@ defmodule Mazurka.Resource.Validation do
   use Mazurka.Resource.Utils.Check
 
   defmacro validation(block, message \\ nil) do
-    Scope.check(:validation, block, if message do message else block end)
+    Scope.check(:validation, block, if message do message else block |> Macro.to_string() end)
   end
 end
