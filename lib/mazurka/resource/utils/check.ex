@@ -5,10 +5,11 @@ defmodule Mazurka.Resource.Utils.Check do
     module = __CALLER__.module
     name = Module.split(module) |> List.last()
     mazurka_check = :"__mazurka_#{String.downcase(name)}s__"
-    macro = :"#{String.downcase(name)}"
+    macro = :"#{String.downcase(name)}_old"
 
     quote bind_quoted: binding(), location: :keep do
       alias Mazurka.Resource.Utils
+      alias Utils.Scope
 
       defmacro __using__(_) do
         check = unquote(mazurka_check)

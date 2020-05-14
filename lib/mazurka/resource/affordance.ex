@@ -62,16 +62,16 @@ defmodule Mazurka.Resource.Affordance do
       def affordance(mediatype, unquote_splicing(Utils.arguments)) when is_atom(mediatype) do
         case __mazurka_check_params__(unquote(Utils.params)) do
           {[], []} ->
-            scope = __mazurka_scope__(mediatype, unquote_splicing(Utils.arguments))
-            case __mazurka_conditions__(unquote_splicing(Utils.arguments), scope) do
-              {:error, _} ->
-                %Mazurka.Affordance.Undefined{resource: __MODULE__,
-                                              mediatype: mediatype,
-                                              params: unquote(Utils.params),
-                                              input: unquote(Utils.input),
-                                              opts: unquote(Utils.opts)}
-              :ok ->
+            case __mazurka_scope_check__(:affordance, mediatype, unquote_splicing(Utils.arguments)) do
+              {:no_error, scope} ->
                 __mazurka_match_affordance__(mediatype, unquote_splicing(Utils.arguments), scope)
+              wtf ->
+               %Mazurka.Affordance.Undefined{resource: __MODULE__,
+                                           mediatype: mediatype,
+                                           params: unquote(Utils.params),
+                                           input: unquote(Utils.input),
+                                           opts: unquote(Utils.opts)}
+
             end
           {[_ | _] = missing, _} ->
             raise Mazurka.MissingParametersException, params: missing, conn: unquote(Utils.conn())

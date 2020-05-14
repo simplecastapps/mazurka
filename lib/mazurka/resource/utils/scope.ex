@@ -17,11 +17,15 @@ defmodule Mazurka.Resource.Utils.Scope do
   def define(var, name, block, :binary) when is_atom(name) do
     bin_name = to_string(name)
     block = transform_value(var, bin_name, block)
-    compile(name, block)
+    compile_assignment(name, block)
   end
   def define(var, name, block, :atom) when is_atom(name) do
     block = transform_value(var, name, block)
-    compile(name, block)
+    compile_assignment(name, block)
+  end
+
+  def check(check_type, block, message) do
+    compile_check(check_type, block, message)
   end
 
   defp transform_value(var, name, []) do
@@ -40,17 +44,58 @@ defmodule Mazurka.Resource.Utils.Scope do
   end
 
   defmacro __before_compile__(env) do
-    scope = Module.get_attribute(env.module, :mazurka_scope) |> :lists.reverse()
-    values = Enum.flat_map(scope, fn({name, code}) ->
+    scope_assignments = Module.get_attribute(env.module, :mazurka_scope) |> assignments()
+
+    values = scope_assignments |> Enum.flat_map(fn({name, code}) ->
       var = Macro.var(name, nil)
       quote do
         unquote(var) = unquote(code)
         _ = unquote(var)
-      end
-      |> elem(2)
+      end |> elem(2)
     end)
-    map = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
+    map = scope_assignments |> Enum.map(fn({n, _}) -> Macro.var(n, nil) end)
+
+    # ---
+    scope = Module.get_attribute(env.module, :mazurka_scope) |> Enum.reverse
+    scope_splice = scope |> Enum.map(fn
+      {:assignment, {name, code}} ->
+        var = Macro.var(name, nil)
+        quote do
+        unquote(var) = case mazurka_error__ do
+          :no_error -> unquote(code)
+            _ -> nil
+          end
+           _ = unquote(var)
+        end |> elem(2)
+
+      {:check, {check_type, condition, error_code}} ->
+        quote do
+          mazurka_error__ = 
+            if (mazurka_error__ != :no_error ||
+              (unquote(check_type) == :validation && resource_type == :affordance)
+              ) do
+              mazurka_error__
+            else
+              if (unquote(condition)) do
+                mazurka_error__
+              else
+                 code = unquote(error_code)
+                 _ = {unquote(check_type), code}
+              end
+            end
+        _ = mazurka_error__
+        end |> elem(2)
+    end) |> Enum.concat
+
     quote do
+      defp __mazurka_scope_check__(resource_type, unquote(Utils.mediatype), unquote_splicing(Utils.arguments)) do
+        var!(conn) = unquote(Utils.conn)
+        _ = var!(conn)
+        mazurka_error__ = :no_error
+        unquote_splicing(scope_splice)
+        {mazurka_error__, {unquote_splicing(map)}}
+      end
+
       defp __mazurka_scope__(unquote(Utils.mediatype), unquote_splicing(Utils.arguments)) do
         var!(conn) = unquote(Utils.conn)
         _ = var!(conn)
@@ -60,14 +105,28 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  def compile(name, block) do
+  def compile_assignment(name, block) do
     quote do
-      @mazurka_scope {unquote(name), unquote(Macro.escape(block))}
+      @mazurka_scope {:assignment, {unquote(name), unquote(Macro.escape(block))}}
     end
   end
 
+  def compile_check(check_type, block, message) do
+    quote do
+      @mazurka_scope {:check, {unquote(check_type), unquote(Macro.escape(block)), unquote(Macro.escape(message))}}
+    end
+  end
+
+  defp assignments(scope) do
+    scope |> :lists.reverse() |> Enum.filter(fn
+      {:assignment, _x} -> true
+      _ -> false
+    end) |> Enum.map(fn {:assignment, x} -> x end)
+  end
+
   defmacro dump() do
-    scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> :lists.reverse()
+    scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments
+
     vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
     assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
     quote do

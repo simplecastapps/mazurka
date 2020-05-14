@@ -59,19 +59,13 @@ defmodule Mazurka.Resource.Action do
           mediatype ->
             case __mazurka_check_params__(unquote(Utils.params)) do
               {[], []} ->
-                scope = __mazurka_scope__(mediatype, unquote_splicing(Utils.arguments))
-                case __mazurka_conditions__(unquote_splicing(Utils.arguments), scope) do
-                  {:error, %{:__struct__ => _} = exception} ->
-                    raise exception
-                  {:error, message} ->
-                    raise Mazurka.ConditionException, message: message, conn: unquote(Utils.conn)
-                  :ok ->
-                    case __mazurka_validations__(unquote_splicing(Utils.arguments), scope) do
-                      {:error, message} ->
-                        raise Mazurka.ValidationException, message: message, conn: unquote(Utils.conn)
-                      :ok ->
-                        __mazurka_match_action__(mediatype, unquote_splicing(Utils.arguments), scope)
-                    end
+                case __mazurka_scope_check__(:action, mediatype, unquote_splicing(Utils.arguments)) do
+                  {:no_error, scope} ->
+                    __mazurka_match_action__(mediatype, unquote_splicing(Utils.arguments), scope)
+                  {{:validation, error_message}, _} ->
+                    raise Mazurka.ValidationException, message: error_message, conn: unquote(Utils.conn)
+                  {{:condition, error_message}, _} ->
+                    raise Mazurka.ConditionException, message: error_message, conn: unquote(Utils.conn)
                 end
               {missing, nil_params} ->
                 raise Mazurka.MissingParametersException, params: missing ++ nil_params, conn: unquote(Utils.conn)

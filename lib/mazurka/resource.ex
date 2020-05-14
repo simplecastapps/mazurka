@@ -22,7 +22,6 @@ defmodule Mazurka.Resource do
       quote do
         @before_compile unquote(__MODULE__)
 
-        use Mazurka.Resource.Condition
         use Mazurka.Resource.Event
         use Mazurka.Resource.Input
         use Mazurka.Resource.Let
@@ -30,8 +29,9 @@ defmodule Mazurka.Resource do
         use Mazurka.Resource.Mediatype
         use Mazurka.Resource.Option
         use Mazurka.Resource.Param
-        use Mazurka.Resource.Validation
         use Mazurka.Resource.Utils.Scope
+        use Mazurka.Resource.Validation
+        use Mazurka.Resource.Condition
       end
     end
   end
