@@ -12,6 +12,13 @@ defmodule Mazurka.Resource.Utils.Global do
         Mazurka.Resource.Utils.unquote(var_name)()
       end
 
+      defmacro has(name) when is_atom(name) do
+        value = Mazurka.Resource.Utils.unquote(var_name)()
+        quote do
+          unquote(value) |> Map.has_key?(unquote(name))
+        end
+      end
+
       case type do
         :binary ->
           defmacro get(name) when is_atom(name) do
