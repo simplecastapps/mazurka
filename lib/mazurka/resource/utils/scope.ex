@@ -130,11 +130,23 @@ defmodule Mazurka.Resource.Utils.Scope do
     end) |> Enum.map(fn {:assignment, x} -> x end)
   end
 
+  defmacro dump_as_ob(mod) do
+    scope = Module.get_attribute(mod, :mazurka_scope) |> assignments
+
+    kvs = scope |> Enum.map(fn {n, _v} -> n end) |> Enum.uniq |> Enum.map(fn k ->
+      {k, Macro.var(k, nil)}
+    end)
+
+    # create a map of %{var_name as atom -> var name}
+    {:%{}, [], kvs}
+  end
+
   defmacro dump() do
     scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments
 
     vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
     assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
+
     quote do
       var!(conn) = unquote(Utils.conn)
       _ = var!(conn)

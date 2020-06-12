@@ -23,6 +23,7 @@ defmodule Mazurka.Resource.Link do
     opts = format_opts(opts)
     Module.put_attribute(__CALLER__.module, :mazurka_links, resource)
 
+    mod = __CALLER__.module
     quote do
       conn = var!(conn)
       router = unquote(Utils.router)
@@ -38,7 +39,8 @@ defmodule Mazurka.Resource.Link do
 
       module = Mazurka.Router.resolve_resource(router, resource, source, conn)
 
-      opts = unquote(opts)
+      opts = Mazurka.Resource.Utils.Scope.dump_as_ob(unquote(mod)) |> Map.merge(unquote(opts))
+
       warn = Map.get(opts, :warn)
 
       case module do
