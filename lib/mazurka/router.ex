@@ -35,7 +35,7 @@ defimpl Mazurka.Router, for: Atom do
       %{module: ^router, function: :resolve_resource} ->
         module
       _ ->
-        reraise e, System.stacktrace
+        reraise e, __STACKTRACE__
     end
   end
 
@@ -49,7 +49,7 @@ defimpl Mazurka.Router, for: Atom do
       %{module: ^router, function: :format_params} ->
         params
       _ ->
-        reraise e, System.stacktrace
+        reraise e, __STACKTRACE__
     end
   end
 end
