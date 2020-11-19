@@ -10,18 +10,18 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  def define(var, name, block, type \\ :binary)
-  def define(var, {name, _, _}, block, type) when is_atom(name) do
-    define(var, name, block, type)
+  def define(var, name, block, type \\ :binary, class \\ nil)
+  def define(var, {name, _, _}, block, type, class) when is_atom(name) do
+    define(var, name, block, type, class)
   end
-  def define(var, name, block, :binary) when is_atom(name) do
+  def define(var, name, block, :binary, class) when is_atom(name) do
     bin_name = to_string(name)
     block = transform_value(var, bin_name, block)
-    compile_assignment(name, block)
+    compile_assignment(name, block, class)
   end
-  def define(var, name, block, :atom) when is_atom(name) do
+  def define(var, name, block, :atom, class) when is_atom(name) do
     block = transform_value(var, name, block)
-    compile_assignment(name, block)
+    compile_assignment(name, block, class)
   end
 
   def check(check_type, block, message) do
@@ -58,7 +58,7 @@ defmodule Mazurka.Resource.Utils.Scope do
     # ---
     scope = Module.get_attribute(env.module, :mazurka_scope) |> Enum.reverse
     scope_splice = scope |> Enum.map(fn
-      {:assignment, {name, code}} ->
+      {:assignment, _class, {name, code}} ->
         var = Macro.var(name, nil)
         quote do
         unquote(var) = case mazurka_error__ do
@@ -111,9 +111,9 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  def compile_assignment(name, block) do
+  def compile_assignment(name, block, class \\ nil) do
     quote do
-      @mazurka_scope {:assignment, {unquote(name), unquote(Macro.escape(block))}}
+      @mazurka_scope {:assignment, unquote(class), {unquote(name), unquote(Macro.escape(block))}}
     end
   end
 
@@ -123,11 +123,12 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  defp assignments(scope) do
+  defp assignments(scope, class \\ :all) do
     scope |> :lists.reverse() |> Enum.filter(fn
-      {:assignment, _x} -> true
+      {:assignment, _class, _x} when class == :all -> true
+      {:assignment, ^class, _x} -> true
       _ -> false
-    end) |> Enum.map(fn {:assignment, x} -> x end)
+    end) |> Enum.map(fn {:assignment, _class, x} -> x end)
   end
 
   defmacro dump_as_ob(mod) do
@@ -143,6 +144,8 @@ defmodule Mazurka.Resource.Utils.Scope do
 
   defmacro dump() do
     scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments
+    inputs = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments(:input)
+    params = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments(:param)
 
     vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
     assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
@@ -152,6 +155,13 @@ defmodule Mazurka.Resource.Utils.Scope do
       _ = var!(conn)
       {unquote_splicing(vars)} = unquote(Utils.scope)
       unquote_splicing(assigns)
+      {var!(mazurka_all_input), var!(mazurka_all_params)} =
+        {
+          unquote(inputs) |> Enum.filter(fn {_k, v} -> v end) |> Map.new(),
+          unquote(params) |> Map.new()
+        }
+      _ = var!(mazurka_all_params)
+      _ = var!(mazurka_all_input)
     end
   end
 end

@@ -2,7 +2,9 @@ defmodule Mazurka.Resource.Option do
   @moduledoc false
 
   alias Mazurka.Resource.Utils
-  use Utils.Global, var: :opts, type: :atom
+  # Option.get gets raw input, unmodified by lets, etc, but can be used before
+  # action / affordance
+  use Utils.Global, var: :opts, type: :atom, style: :raw
   alias Utils.Scope
 
   defmacro __using__(_) do
@@ -34,6 +36,6 @@ defmodule Mazurka.Resource.Option do
   defmacro option(name, block \\ []) do
     %{module: module} = __CALLER__
     Module.put_attribute(module, :mazurka_options, elem(name, 0))
-    Scope.define(Utils.opts, name, block, :atom)
+    Scope.define(Utils.opts, name, block, :atom, :option)
   end
 end
