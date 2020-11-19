@@ -157,7 +157,9 @@ defmodule Mazurka.Resource.Utils.Scope do
       unquote_splicing(assigns)
       {var!(mazurka_all_input), var!(mazurka_all_params)} =
         {
-          unquote(inputs) |> Enum.filter(fn {_k, v} -> v end) |> Map.new(),
+          # filter out any inputs that weren't actually sent into the route
+          unquote(inputs) |> Enum.filter(fn {k, v} -> unquote(Utils.input) |> Map.has_key?(to_string(k)) end) |> Map.new(),
+          # params are always required
           unquote(params) |> Map.new()
         }
       _ = var!(mazurka_all_params)
