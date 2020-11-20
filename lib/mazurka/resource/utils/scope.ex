@@ -32,11 +32,14 @@ defmodule Mazurka.Resource.Utils.Scope do
     var_get(var, name)
   end
   defp transform_value(var, name, fun) do
+    # We can prevent code from running if the input wasn't sent
+    # to the route, but we can't stop a variable with this name
+    # from being overwritten, so we have to just set it to nil
     quote do
-      if unquote(var) |> Map.has_key?(unquote(name)) do
-        (unquote(fun)).(unquote(var_get(var, name)))
+      if Map.has_key?((unquote(var)), (unquote(name))) do
+        unquote(fun).(unquote(var_get(var, name)))
       else
-        unquote(var)[unquote(name)]
+        nil
       end
     end
   end
@@ -148,8 +151,13 @@ defmodule Mazurka.Resource.Utils.Scope do
 
   defmacro dump() do
     scope = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments
+
+    # inputs and params are a Map(input name => scope variable) to the variables
+    # whose values are code that has been evaluated already
     inputs = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments(:input)
+     |> Enum.map(fn {k, _} -> {k, Macro.var(k, nil)} end)
     params = Module.get_attribute(__CALLER__.module, :mazurka_scope) |> assignments(:param)
+     |> Enum.map(fn {k, _} -> {k, Macro.var(k, nil)} end)
 
     vars = Enum.map(scope, fn({n, _}) -> Macro.var(n, nil) end)
     assigns = Enum.map(scope, fn({n, _}) -> quote(do: _ = unquote(Macro.var(n, nil))) end)
@@ -162,7 +170,7 @@ defmodule Mazurka.Resource.Utils.Scope do
       {var!(mazurka_all_input), var!(mazurka_all_params)} =
         {
           # filter out any inputs that weren't actually sent into the route
-          unquote(inputs) |> Enum.filter(fn {k, v} -> unquote(Utils.input) |> Map.has_key?(to_string(k)) end) |> Map.new(),
+          unquote(inputs) |> Enum.filter(fn {k, v} -> Map.has_key?(unquote(Utils.input), to_string(k)) end) |> Map.new(),
           # params are always required
           unquote(params) |> Map.new()
         }
