@@ -33,7 +33,11 @@ defmodule Mazurka.Resource.Utils.Scope do
   end
   defp transform_value(var, name, fun) do
     quote do
-      (unquote(fun)).(unquote(var_get(var, name)))
+      if unquote(var) |> Map.has_key?(unquote(name)) do
+        (unquote(fun)).(unquote(var_get(var, name)))
+      else
+        unquote(var)[unquote(name)]
+      end
     end
   end
 
