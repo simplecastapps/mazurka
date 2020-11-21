@@ -171,7 +171,11 @@ defmodule Test.Mazurka.Resource.All do
     }, %{}, nil, %{
     })
     assert %{
-      input1: nil,
+      # despite not being provided, the
+      # block runs anyways.  Not ideal
+      # but we've come to rely on that
+      # behavior.
+      input1: 123,
       param1: 123,
       all_input: %{
       },
