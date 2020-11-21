@@ -32,15 +32,12 @@ defmodule Mazurka.Resource.Utils.Scope do
     var_get(var, name)
   end
   defp transform_value(var, name, fun) do
-    # We can prevent code from running if the input wasn't sent
-    # to the route, but we can't stop a variable with this name
-    # from being overwritten, so we have to just set it to nil
+    # It would be cool to not run these functions
+    # when the inputs for them are not supplied, but
+    # unfortunately we've gone down a path where we
+    # depend on those functions being run.
     quote do
-      if Map.has_key?((unquote(var)), (unquote(name))) do
-        unquote(fun).(unquote(var_get(var, name)))
-      else
-        nil
-      end
+      unquote(fun).(unquote(var_get(var, name)))
     end
   end
 
