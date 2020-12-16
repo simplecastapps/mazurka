@@ -5,6 +5,8 @@ defmodule Test.Mazurka.Resource.Input do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       input foo
 
       mediatype Hyper do
@@ -27,6 +29,8 @@ defmodule Test.Mazurka.Resource.Input do
   context Transform do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       input foo, fn(value) ->
         [value, value]
@@ -52,6 +56,8 @@ defmodule Test.Mazurka.Resource.Input do
   context Referential do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       input foo
 

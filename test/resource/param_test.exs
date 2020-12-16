@@ -5,6 +5,8 @@ defmodule Test.Mazurka.Resource.Param do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       mediatype Hyper do
@@ -48,6 +50,8 @@ defmodule Test.Mazurka.Resource.Param do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo, fn(value) ->
         [value, value]
       end
@@ -72,6 +76,8 @@ defmodule Test.Mazurka.Resource.Param do
   context Referential do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       param foo
 

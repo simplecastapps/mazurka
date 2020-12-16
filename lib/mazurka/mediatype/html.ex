@@ -10,7 +10,7 @@ defmodule Mazurka.Mediatype.HTML do
   end
 
   defmacro handle_affordance(affordance, props) do
-    quote location: :keep do
+    quote do
       affordance = unquote(affordance)
       case {affordance, unquote(props) || to_string(affordance)} do
         {%{__struct__: struct}, _} when struct in [Mazurka.Affordance.Undefined, Mazurka.Affordance.Unacceptable] ->

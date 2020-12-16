@@ -18,12 +18,12 @@ defmodule Mazurka.Resource.Link do
   """
 
   defmacro link_to(resource, params \\ nil, input \\ nil, fragment \\ nil, opts \\ nil) do
+
     params = format_params(params)
     input = format_params(input)
     opts = format_opts(opts)
     Module.put_attribute(__CALLER__.module, :mazurka_links, resource)
 
-    mod = __CALLER__.module
     quote do
       conn = var!(conn)
       router = unquote(Utils.router)
@@ -39,7 +39,11 @@ defmodule Mazurka.Resource.Link do
 
       module = Mazurka.Router.resolve_resource(router, resource, source, conn)
 
-      opts = Mazurka.Resource.Utils.Scope.dump_as_ob(unquote(mod)) |> Map.merge(unquote(opts))
+      # original options passed into this route from routes linking to this page
+      # + new opts created in this route
+      # + opts explicitly passed into link_to
+      opts =
+        unquote(Utils.opts) |> Map.merge(Mazurka.Resource.Option.all()) |> Map.merge(unquote(opts))
 
       warn = Map.get(opts, :warn)
 
@@ -117,20 +121,20 @@ defmodule Mazurka.Resource.Link do
     end
   end
 
-  defp format_params(nil) do
+  def format_params(nil) do
     {:%{}, [], []}
   end
-  defp format_params({:%{}, meta, items}) do
+  def format_params({:%{}, meta, items}) do
     {:%{}, meta, Enum.map(items, fn({name, value}) ->
       {to_string(name), value}
     end)}
   end
-  defp format_params(items) when is_list(items) do
+  def format_params(items) when is_list(items) do
     {:%{}, [], Enum.map(items, fn({name, value}) ->
       {to_string(name), value}
     end)}
   end
-  defp format_params(other) do
+  def format_params(other) do
     quote do
       Enum.reduce(unquote(other), %{}, fn({name, value}, acc) ->
         Map.put(acc, to_string(name), value)
@@ -159,7 +163,7 @@ defmodule Mazurka.Resource.Link do
     current_mediatype = Utils.mediatype
     current_opts = Utils.opts
 
-    quote bind_quoted: binding() do
+    quote location: :keep, bind_quoted: binding() do
       case router do
         nil ->
           raise Mazurka.MissingRouterException, resource: resource, params: params, input: input, conn: conn, opts: opts
@@ -173,7 +177,9 @@ defmodule Mazurka.Resource.Link do
                      opts: current_opts}
 
           params = Mazurka.Router.format_params(router, params, source, conn)
+            |> Enum.map(fn {k, v} -> {k |> to_string(), v} end) |> Map.new()
           input  = Mazurka.Router.format_params(router, input, source, conn)
+            |> Enum.map(fn {k, v} -> {k |> to_string(), v} end) |> Map.new()
 
           affordance = %Mazurka.Affordance{resource: resource,
                                            params: params,

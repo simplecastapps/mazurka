@@ -36,18 +36,19 @@ defmodule Mazurka.Resource.Action do
   defmacro action(mediatype, [do: block]) do
     quote do
       defp __mazurka_match_action__(unquote(mediatype) = unquote(Utils.mediatype), unquote_splicing(Utils.arguments), unquote(Utils.scope)) do
-        Mazurka.Resource.Utils.Scope.dump()
+
+        Mazurka.Resource.Utils.Scope.dump(:action)
         var!(conn) = unquote(Utils.conn)
         action = unquote(block)
         res = unquote(mediatype).handle_action(action)
         unquote(Utils.conn) = var!(conn)
-        __mazurka_event__(res, unquote_splicing(Utils.arguments), unquote(Utils.scope), unquote(Utils.mediatype))
+        {res, var!(conn)}
       end
     end
   end
 
   defmacro __before_compile__(_) do
-    quote location: :keep do
+    quote do
       def action(content_type = {_, _, _}, unquote_splicing(Utils.arguments)) do
         case __mazurka_provide_content_type__(content_type) do
           nil ->
@@ -57,14 +58,16 @@ defmodule Mazurka.Resource.Action do
               conn: unquote(Utils.conn)
             ]
           mediatype ->
+            unquote(Utils.params) = __mazurka_filter_params__(unquote(Utils.params))
+            unquote(Utils.input) = __mazurka_filter_inputs__(unquote(Utils.input))
             case __mazurka_check_params__(unquote(Utils.params)) do
               {[], []} ->
-                case __mazurka_scope_check__(:action, mediatype, unquote_splicing(Utils.arguments)) do
+                case __mazurka_action_scope_check__(mediatype, unquote_splicing(Utils.arguments)) do
                   {:no_error, scope} ->
                     __mazurka_match_action__(mediatype, unquote_splicing(Utils.arguments), scope)
                   {{:validation, error_message}, _} ->
                     raise Mazurka.ValidationException, message: error_message, conn: unquote(Utils.conn)
-                  {{:condition, error_message}, _} ->
+                  {{:condition, error_message}, _} = x ->
                     raise Mazurka.ConditionException, message: error_message, conn: unquote(Utils.conn)
                 end
               {missing, nil_params} ->
@@ -73,7 +76,7 @@ defmodule Mazurka.Resource.Action do
         end
       end
 
-      defp __mazurka_match_action__(_, unquote_splicing(Utils.arguments), _) do
+      defp __mazurka_match_action__(m, unquote_splicing(Utils.arguments), s) do
         ## TODO raise exception
         nil
       end

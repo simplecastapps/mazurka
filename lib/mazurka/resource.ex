@@ -22,7 +22,7 @@ defmodule Mazurka.Resource do
       quote do
         @before_compile unquote(__MODULE__)
 
-        use Mazurka.Resource.Event
+        use Mazurka.Resource.Version
         use Mazurka.Resource.Input
         use Mazurka.Resource.Let
         use Mazurka.Resource.Link
@@ -30,14 +30,14 @@ defmodule Mazurka.Resource do
         use Mazurka.Resource.Option
         use Mazurka.Resource.Param
         use Mazurka.Resource.Utils.Scope
-        use Mazurka.Resource.Validation
-        use Mazurka.Resource.Condition
+        import Mazurka.Resource.Validation
+        import Mazurka.Resource.Condition
       end
     end
   end
 
   defmacro __before_compile__(_) do
-    quote location: :keep do
+    quote do
       @doc """
       Execute a request against the #{inspect(__MODULE__)} resource
 

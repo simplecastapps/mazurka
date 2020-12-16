@@ -17,7 +17,7 @@ defmodule Test.Mazurka.Case do
       {test_name, Enum.join(test_doc, "\n"), args, body}
     end)
 
-    quote location: :keep do
+    quote do
       idx = @test_idx
       @test_idx @test_idx + 1
       Kernel.defmodule unquote(cname) do
@@ -56,7 +56,7 @@ defmodule Test.Mazurka.Case do
   end
 
   defmacro defmodule(name, [do: body]) do
-    quote location: :keep do
+    quote do
       import Kernel
       import unquote(__MODULE__), except: [defmodule: 2]
       Kernel.defmodule unquote(name), unquote([do: body])
@@ -88,7 +88,7 @@ defmodule Test.Mazurka.Case do
   end
 
   defmacro router(name, [do: body]) do
-    quote location: :keep do
+    quote do
       defmodule unquote(name) do
         unquote(body)
         def resolve(_, _, _) do
@@ -107,7 +107,7 @@ defmodule Test.Mazurka.Case do
   end
 
   defmacro route(method, path, resource) do
-    quote location: :keep do
+    quote do
       def resolve(%{resource: unquote(resource), params: params} = affordance, _source, _conn) do
         %{affordance |
           method: unquote(method),

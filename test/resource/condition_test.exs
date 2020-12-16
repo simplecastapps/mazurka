@@ -13,6 +13,8 @@ defmodule Test.Mazurka.Resource.Condition do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       condition foo != "bar"
@@ -93,6 +95,8 @@ defmodule Test.Mazurka.Resource.Condition do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       condition foo != "bar"
@@ -135,6 +139,8 @@ defmodule Test.Mazurka.Resource.Condition do
   context "Ordering" do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       param foo
 
@@ -179,6 +185,8 @@ defmodule Test.Mazurka.Resource.Condition do
   context "Custom Message" do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       param foo
 

@@ -1,15 +1,15 @@
 defmodule Mazurka.Resource.Condition do
   @moduledoc false
 
-  use Mazurka.Resource.Utils.Check
+  alias Mazurka.Resource.Utils.Scope
 
   defmacro condition(block, message \\ nil)
 
   defmacro condition([do: block], message) do
-    Scope.check(:condition, block, if message do message else block |> Macro.to_string() end)
+    Scope.define(nil, nil, nil, :condition, block, message, nil, nil)
   end
 
   defmacro condition(block, message) do
-    Scope.check(:condition, block, if message do message else block |> Macro.to_string() end)
+    Scope.define(nil, nil, nil, :condition, block, message, nil, nil)
   end
 end

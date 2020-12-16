@@ -5,6 +5,8 @@ defmodule Test.Mazurka.Resource.Link do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       mediatype Hyper do
@@ -16,6 +18,8 @@ defmodule Test.Mazurka.Resource.Link do
 
     defmodule Bar do
       use Mazurka.Resource
+
+      version 1
 
       param bar
 
@@ -71,6 +75,8 @@ defmodule Test.Mazurka.Resource.Link do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       mediatype Hyper do
@@ -102,6 +108,8 @@ defmodule Test.Mazurka.Resource.Link do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       mediatype Hyper do
@@ -131,6 +139,8 @@ defmodule Test.Mazurka.Resource.Link do
   context "Transition" do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       param foo
 
@@ -167,6 +177,8 @@ defmodule Test.Mazurka.Resource.Link do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       mediatype Hyper do
@@ -178,6 +190,8 @@ defmodule Test.Mazurka.Resource.Link do
 
     defmodule Bar do
       use Mazurka.Resource
+
+      version 1
 
       param bar
 
@@ -213,4 +227,101 @@ defmodule Test.Mazurka.Resource.Link do
       assert Bar = second.resource
       assert %{"bar" => "456"} = second.params
   end
+
+  context "Option Passing" do
+    defmodule Foo do
+      use Mazurka.Resource
+
+      param foo, option: true, condition: fn x ->
+        {:ok, x}
+      end
+
+      # use input1 from Bar route
+      input input1, option: true, default: "input1_default", condition: fn x ->
+        {:ok, x}
+      end
+
+      # Bar doesn't send input2, so use default
+      input input2, option: true, default: "input2_default", condition: fn x ->
+        {:ok, x}
+      end
+
+      # use input1 from Bar route
+      input input3, option: :input1, default: "input3_default", condition: fn x ->
+        {:ok, x}
+      end
+
+      # use input1 from Bar route (foo doesn't exist)
+      input input4, option: [:foo, :input1, :whatevs], default: "input4_default", condition: fn x ->
+        {:ok, x}
+      end
+
+
+      mediatype Hyper do
+        affordance do
+          %{
+            "foo" => foo <> "_aff",
+            "input1" => input1 <> "_aff",
+            "input2" => input2 <> "_aff",
+            "input3" => input3 <> "_aff",
+            "input4" => input4 <> "_aff"
+          }
+        end
+        action do
+          %{
+            "foo" => foo <> "_action",
+            "input1" => input1 <> "_action",
+            "input2" => input2 <> "_action",
+            "input3" => input3 <> "_action",
+            "input4" => input4 <> "_action"
+          }
+        end
+      end
+    end
+
+    defmodule Bar do
+      use Mazurka.Resource
+
+      mediatype Hyper do
+        action do
+          %{
+            "bar" => link_to(Foo, %{foo: "newfoo"}, %{}, nil, %{input1: "input1_alt"})
+          }
+        end
+      end
+    end
+    router Router do
+      route "GET", ["foo", :foo], Foo
+      route "GET", ["bar"], Bar
+    end
+
+    after
+    "Foo.action" ->
+      {res, _, _} = Foo.action([], %{"foo" => "foo"}, %{}, %{}, Router)
+      assert %{
+        "foo"  => "foo_action",
+        "input1" => "input1_default_action",
+        "input2" => "input2_default_action",
+        "input3" => "input3_default_action",
+        "input4" => "input4_default_action",
+        "href" => "/foo/foo"
+      } == res
+
+    "Bar.action" ->
+    {res, _, _} = Bar.action([], %{}, %{}, %{}, Router)
+
+      assert %{
+        "href" => "/bar",
+        "bar" => %{
+          "foo" => "newfoo_aff",
+          "input1" => "input1_alt_aff",
+          "input2" => "input2_default_aff",
+          "input3" => "input1_alt_aff",
+          "input4" => "input1_alt_aff",
+          "href" => "/foo/newfoo"
+          }
+        } == res
+  end
+
+
 end

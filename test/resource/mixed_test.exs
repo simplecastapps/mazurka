@@ -5,6 +5,8 @@ defmodule Test.Mazurka.Resource.Mixed do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
       condition foo != "bar"
 
