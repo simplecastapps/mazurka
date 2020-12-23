@@ -236,10 +236,6 @@ defmodule Test.Mazurka.Resource.All do
         )
 
       assert %{
-               # despite not being provided, the
-               # block runs anyways.  Not ideal
-               # but we've come to rely on that
-               # behavior.
                input1: 2,
                input2: 123,
                param1: 123,
