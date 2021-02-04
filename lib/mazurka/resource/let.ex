@@ -47,7 +47,7 @@ defmodule Mazurka.Resource.Let do
       true -> {:condition, condition}
     end
 
-    Scope.define(nil, name, nil, val_type, block, nil, nil, option_fields)
+    Scope.define(nil, name, :let, val_type, block, nil, nil, option_fields)
   end
 
   # let foo = ... -> :foo
@@ -73,4 +73,37 @@ defmodule Mazurka.Resource.Let do
   defp fn_to_block(block) do
     block
   end
+
+  defmacro all(type \\ :atom) do
+    # keyword list from variable atom to stored variable name
+    all_options =
+      __CALLER__.module
+      |> Module.get_attribute(:mazurka_scope)
+      |> Enum.reverse()
+      |> Mazurka.Resource.Utils.Scope.filter_by_lets()
+      |> Enum.map(fn
+        {name, :input, _, _, _, default, _} ->
+          if default == :__mazurka_unspecified do
+            []
+          else
+            [{name, Macro.var(name, nil)}]
+          end
+          {name, _, _, _, _, _default, _} -> [{name, Macro.var(name, nil)}]
+      end)
+      |> Enum.concat()
+     # Enum.uniq_by first duplicate key is winner, we want last.
+     |> Map.new()
+     |> Enum.to_list()
+
+    if type == :atom do
+      quote do
+        unquote({:%{}, [], all_options})
+      end
+    else
+      quote do
+        unquote({:%{}, [], all_options |> Enum.map(fn {k, v} -> {to_string(k), v} end)})
+      end
+    end
+  end
+
 end

@@ -39,6 +39,10 @@ defmodule Mazurka.Resource.Utils.Global do
           end
         end
 
+        defmacro all_unaltered() do
+          Mazurka.Resource.Utils.unquote(var_name)()
+        end
+
         # Allows :block style to retrieve in lets but
         # it will be unaltered by functions attached to statements
         defmacro retrieve_unaltered(name) when is_atom(name) do

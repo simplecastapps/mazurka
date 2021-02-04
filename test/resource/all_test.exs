@@ -35,7 +35,7 @@ defmodule Test.Mazurka.Resource.All do
       input inputc, fn _x -> nil end
       input inputd, fn _x -> true end
 
-      let option = Option.get(:option1) <> "asdf"
+      let option = Mazurka.Resource.Option.get(:option1) <> "asdf"
 
       mediatype Hyper do
         action do
@@ -47,7 +47,7 @@ defmodule Test.Mazurka.Resource.All do
             by_code: Input.get(key),
             all_atom: Input.all(),
             all_binary: Input.all(:binary),
-            option1: Option.get(:option1),
+            option1: Mazurka.Resource.Option.get(:option1),
             let_option: option,
             input1_unaltered_1: input1_unaltered1,
             input1_unaltered_2: input1_unaltered2

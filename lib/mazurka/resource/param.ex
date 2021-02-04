@@ -17,7 +17,7 @@ defmodule Mazurka.Resource.Param do
 
       @before_compile unquote(__MODULE__)
 
-      def params(type \\ :binary) do
+      def params(type \\ :atom) do
         case type do
           :atom -> @mazurka_params
           :binary -> @mazurka_params |> Enum.map(&to_string/1)
@@ -67,6 +67,7 @@ defmodule Mazurka.Resource.Param do
 
     Those options can be used to make more relevant error messages.
 
+
       param address, validation: fn x, field_name, param_type ->
         :address = field_name
         :param = param_type
@@ -85,18 +86,16 @@ defmodule Mazurka.Resource.Param do
       end
 
     Options:
-      * condition - function with between 1 and 3 params returning {:ok, val} or {:error, message}
-      * validation - same as condition, but only run in actions, not affordances
+    * `condition` function with between 1 and 3 params returning {:ok, val} or {:error, message}
+    * `validation` same as condition, but only run in actions, not affordances
 
-      * default: - if the user doesn't pass in a value, validation won't be run and this will be the default
+    * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with user passed in value.
 
-      * option: - if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with user passed in value.
 
-    Since it is an input, which means by definition that it is optional, it will not be brought into scope unless it has a default value set. You can find out if it was sent via #{
-    __MODULE__
-  }.all()
+    Since it is a param, it will always be brought into scope, but to be accessible as a variable
+    its condition or validation must have run.
 
-    There must be at least one validation or condition but not both. If the variable is validated, then it will not be brought into scope in affordances or in any other let / param / input validation code. This is to prevent referencing an unvalidated variable in a context where validation did not occur. 
+    There must be at least one validation or condition but not both. If the variable is validated, then it will not be brought into scope in affordances or in any other let / param / input condition code. This is to prevent referencing an unvalidated variable in a context where validation did not occur. 
   """
   defmacro param(w, opts \\ []) do
     module = __CALLER__.module

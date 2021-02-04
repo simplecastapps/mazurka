@@ -9,7 +9,7 @@ defmodule Mazurka.Resource.Option do
   defmacro __using__(_) do
     quote do
       require unquote(__MODULE__)
-      alias unquote(__MODULE__)
+      # alias unquote(__MODULE__)
     end
   end
 
@@ -37,7 +37,8 @@ defmodule Mazurka.Resource.Option do
       |> Enum.map(fn {name, _, _, _, _, _default, _} ->
         [name, Macro.var(name, nil)]
       end)
-      |> Enum.uniq_by(fn {name, _} -> name end)
+      |> Map.new()
+      |> Enum.to_list()
 
     if type == :atom do
       quote do
@@ -46,6 +47,38 @@ defmodule Mazurka.Resource.Option do
     else
       quote do
         unquote({:%{}, [], all_options |> Enum.map(fn {k, v} -> {to_string(k), v} end)})
+      end
+    end
+  end
+
+  defmacro all_bindings(type \\ :atom) do
+    # keyword list from variable atom to stored variable name
+    all_bindings =
+      __CALLER__.module
+      |> Module.get_attribute(:mazurka_scope)
+      |> Enum.reverse()
+      |> Mazurka.Resource.Utils.Scope.filter_by_bindings()
+      |> Enum.map(fn
+          {name, :input, _, _, _, default, _} ->
+        if default == :__mazurka_unspecified do
+          {name, Utils.hidden_var(name)}
+        else
+          {name, Macro.var(name, nil)}
+        end
+
+        {name, _, _, _, _, _default, _} ->
+          {name, Macro.var(name, nil)}
+      end)
+      |> Map.new()
+      |> Enum.to_list()
+
+    if type == :atom do
+      quote do
+        unquote({:%{}, [], all_bindings})
+      end
+    else
+      quote do
+        unquote({:%{}, [], all_bindings |> Enum.map(fn {k, v} -> {to_string(k), v} end)})
       end
     end
   end

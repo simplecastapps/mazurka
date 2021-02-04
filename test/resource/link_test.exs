@@ -322,6 +322,4 @@ defmodule Test.Mazurka.Resource.Link do
           }
         } == res
   end
-
-
 end

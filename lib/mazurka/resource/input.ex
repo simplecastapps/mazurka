@@ -96,32 +96,37 @@ defmodule Mazurka.Resource.Input do
 
     Those options can be used to make more relevant error messages.
 
-      input address, validation: fn x, opts ->
-        :address = field_name
-        :input = input_type
 
-        value ->
-        case value |> parse_address() do
-          %Address{} = addr -> {:ok, addr}
-          _ ->
-            # "validation: Could not parse input address"
-            msg = "\#{validation_type}: Could not parse \#{param_type} address"
-            {:error, msg}
+        input address, validation: fn x, opts ->
+          :address = field_name
+          :input = input_type
+
+          value ->
+          case value |> parse_address() do
+            %Address{} = addr -> {:ok, addr}
+            _ ->
+              # "validation: Could not parse input address"
+              msg = "\#{validation_type}: Could not parse \#{param_type} address"
+              {:error, msg}
+          end
         end
-      end
 
-      input foo, option: true, default: "foo", validation: fn x ->
-        {:ok, x |> to_string()}
-      end
+        input foo, option: true, default: "foo", validation: fn x ->
+          {:ok, x |> to_string()}
+        end
 
     Options:
-      * condition - function one or two parameters returning {:ok, val} or {:error, message}
-      * validation - same as condition, but only run in actions, not affordances
-      * option: - if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
+    * `condition` function one or two parameters returning {:ok, val} or {:error, message}
+    * `validation` same as condition, but only run in actions, not affordances
+    * `default` if the user doesn't pass in a value, validation won't be run and this will be the default
+    * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
 
-    Since it is an param, it will always be brought into scope and in order to have a value, the condition or validation will always be run.
 
-    There must be at least one validation or condition but not both. If the variable is validated, then it will not be brought into scope in affordances or in any other validation related code. This is to prevent referencing an unvalidated variable in a context where validation did not occur.
+    Since it is an input, which means by definition that it is optional, it will not be brought into scope unless it both has had its validation or condition run and has a default value set. You can find out if it was sent via `#{
+    __MODULE__
+  }.all()` which returns a map of variables that were sent, and you can access its value that way.
+
+    There must be at least one validation or condition but not both. If the variable is validated and has no default, then it will not be brought into scope in affordances or in any other condition related code. This is to prevent referencing an unvalidated variable in a context where validation did not occur.
   """
  defmacro input(w, opts \\ []) do
 

@@ -207,4 +207,73 @@ defmodule Test.Mazurka.Resource.Condition do
           assert e.message == "Uh oh..."
       end
   end
+
+  context "Condition Error Clause" do
+    defmodule Foo do
+      use Mazurka.Resource
+
+      param foo, condition: fn x ->
+        {:ok, x}
+      end
+
+      # old style long conditionals
+      condition [do:
+        # long condition
+        # long condition
+        # long condition
+        # long condition
+        # long condition
+        foo |> String.contains?("1")
+        ], "foo has no 1"
+
+      condition foo |> String.contains?("2"), "foo has no 2"
+
+      condition on_error: "foo has no 3" do
+        foo |> String.contains?("3")
+      end
+
+      # condition true # would raise an error, no error message
+      condition on_error: "foo has no 4" do
+        foo |> String.contains?("4")
+      end
+
+      mediatype Hyper do
+        action do
+          %{"foo" => foo}
+        end
+      end
+    end
+  after
+  "action" ->
+      try do
+        Foo.action([], %{"foo" => "x"}, %{}, %{})
+      rescue
+        e in [Mazurka.ConditionException] ->
+          assert e.message == "foo has no 1"
+      end
+
+      try do
+        Foo.action([], %{"foo" => "1"}, %{}, %{})
+      rescue
+        e in [Mazurka.ConditionException] ->
+          assert e.message == "foo has no 2"
+      end
+
+      try do
+        Foo.action([], %{"foo" => "12"}, %{}, %{})
+      rescue
+        e in [Mazurka.ConditionException] ->
+          assert e.message == "foo has no 3"
+      end
+
+      try do
+        Foo.action([], %{"foo" => "123"}, %{}, %{})
+      rescue
+        e in [Mazurka.ConditionException] ->
+          assert e.message == "foo has no 4"
+      end
+
+      {body, _, _} = Foo.action([], %{"foo" => "1234"}, %{}, %{})
+      assert body == %{"foo" => "1234"}
+  end
 end

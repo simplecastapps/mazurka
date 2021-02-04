@@ -222,7 +222,7 @@ defmodule Mazurka.Resource.Utils.Scope do
             end
 
           # block and error block, eg. `condition current_actor, Error.unauthenticated()`
-          block && error_block ->
+          error_block != :__mazurka_unspecified ->
             quote do
               if unquote(block) do
                 {mazurka_error__, nil}
@@ -231,7 +231,9 @@ defmodule Mazurka.Resource.Utils.Scope do
               end
             end
 
-          block ->
+          # note: backwards compatibility
+          # must be a block that has to be evaluated, but with no error message
+          true ->
             # condition or validation with no error block, eg. `condition foo != bar`
             quote do
               if !unquote(block) do
@@ -240,9 +242,6 @@ defmodule Mazurka.Resource.Utils.Scope do
                 {mazurka_error__, nil}
               end
             end
-
-          true ->
-            raise "this shouldn't happen"
         end
 
       # If there is no error yet and we are supposed to run these
@@ -279,20 +278,25 @@ defmodule Mazurka.Resource.Utils.Scope do
     end)
   end
 
-  def filter_by_inputs(scope) do
+  def filter_by(scope, x) when x in [:input, :param, :let] do
     scope
     |> Enum.filter(fn
-      {_name, :input, _, _, _, _, _} -> true
+      {_name, ^x, _, _, _, _, _} -> true
       _ -> false
     end)
+
+  end
+
+  def filter_by_inputs(scope) do
+    scope |> filter_by(:input)
   end
 
   def filter_by_params(scope) do
-    scope
-    |> Enum.filter(fn
-      {_name, :param, _, _, _, _, _} -> true
-      _ -> false
-    end)
+    scope |> filter_by(:param)
+  end
+
+  def filter_by_lets(scope) do
+    scope |> filter_by(:let)
   end
 
   def filter_by_options(scope) do

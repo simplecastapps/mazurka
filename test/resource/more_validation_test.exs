@@ -58,9 +58,18 @@ defmodule Test.Mazurka.Resource.MoreValidation do
         {:ok, "let3"}
       end
 
-      let let4, validation: fn ->
-        {:ok, "let4"}
+      input let4, validation: fn _ ->
+        {:ok, "let4 binding will be overwritten by next statement"}
       end
+
+      let let4 do
+        "let4 binding will be overwritten too"
+      end
+
+      let let4 do
+        "let4"
+      end
+
 
 
       mediatype Hyper do
@@ -86,7 +95,9 @@ defmodule Test.Mazurka.Resource.MoreValidation do
             "let2" => let2,
             "let3" => let3,
             "let4" => let4,
-            "all_input" => Input.all()
+            "all_input" => Input.all(),
+            "all_lets" => Mazurka.Resource.Let.all(),
+            "all_bindings" => Mazurka.Resource.Option.all_bindings()
           }
         end
       end
@@ -109,7 +120,26 @@ defmodule Test.Mazurka.Resource.MoreValidation do
       "let2" => 5,
       "let3" => "let3",
       "let4" => "let4",
-      "all_input" => %{input1: 5, input2: 2, input3: 3}
+      "all_input" => %{input1: 5, input2: 2, input3: 3},
+      "all_lets" => %{
+        let0: "let0",
+        let1: 4,
+        let2: 5,
+        let3: "let3",
+        let4: "let4"
+      },
+      "all_bindings" => %{
+        param1: 4,
+        input1: 5,
+        input2: 2,
+        input3: 3,
+        let0: "let0",
+        let1: 4,
+        let2: 5,
+        let3: "let3",
+        let4: "let4"
+
+      }
     }
 
     "affordance" ->
@@ -132,8 +162,8 @@ defmodule Test.Mazurka.Resource.MoreValidation do
 
     assert Foo.params() |> Enum.sort == [:param1] |> Enum.sort
     assert Foo.params(:binary) |> Enum.sort == ["param1"] |> Enum.sort
-    assert Foo.inputs() |> Enum.sort == [:input1, :input2, :input3] |> Enum.sort
-    assert Foo.inputs(:binary) |> Enum.sort == ["input1", "input2", "input3"] |> Enum.sort
+    assert Foo.inputs() |> Enum.sort == [:input1, :input2, :input3, :let4] |> Enum.sort
+    assert Foo.inputs(:binary) |> Enum.sort == ["input1", "input2", "input3", "let4"] |> Enum.sort
 
     #
     #    "affordance" ->
