@@ -35,10 +35,8 @@ defmodule Mazurka.Resource.Option do
       |> Mazurka.Resource.Utils.Scope.filter_by_options()
       |> Mazurka.Resource.Utils.Scope.filter_by_bindings()
       |> Enum.map(fn {name, _, _, _, _, _default, _} ->
-        [name, Macro.var(name, nil)]
+        {name, Macro.var(name, nil)}
       end)
-      |> Map.new()
-      |> Enum.to_list()
 
     if type == :atom do
       quote do
