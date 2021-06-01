@@ -9,6 +9,33 @@ defmodule Mazurka.Resource.Let do
     end
   end
 
+  @doc """
+  Define an inline variable to be used later in the route.
+
+      let foo do
+        123
+      end
+
+      let foo = 123
+
+  It can also accept validations or conditions, in which case the supplied
+  function must return an `{:ok, val}` or `{:error, reason}` tuple.
+
+      let foobar, validation: fn ->
+        if foo == 123 do
+          {:ok, 123}
+        else
+          {:error, "foo wasn't 123"}
+        end
+      end
+
+  Options:
+  * `condition` function with no parameters returning {:ok, val} or {:error, message}
+  * `validation` same as condition, but only run in actions, not affordances
+  * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
+
+  There may be at least one validation or condition but not both.
+  """
   defmacro let(w, opts \\ []) do
     module = __CALLER__.module
 
@@ -60,9 +87,9 @@ defmodule Mazurka.Resource.Let do
     name
   end
 
-  # `let foo, condition: fn -> if x {:ok, 123} else {:error, "message"} end end`
+  # `let foo, condition: fn -> {:ok, foobar} end`
   # is equivalent to
-  # `let foo, condition: if {:ok, 123} else {:error, "message"} end`
+  # `let foo, condition: {:ok, foobar}
   defp fn_to_block({:fn, _, [{:->, _, [[], block]}]}) do
     block
   end
@@ -72,6 +99,11 @@ defmodule Mazurka.Resource.Let do
     # let foo do 2 end is equivalent to
     quote do (unquote(block)).() end
   end
+
+  defp fn_to_block({:fn, _, _}) do
+    raise "Invalid block format. Type h #{__MODULE__}.let/2"
+  end
+
   defp fn_to_block(block) do
     block
   end
