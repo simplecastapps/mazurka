@@ -12,7 +12,7 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  def apply_argument(var, if_exists, default, var_name, var_type) do
+  def apply_argument(var, if_exists, default, var_name, var_type, val_type) do
 
     block =
       quote do
@@ -21,7 +21,7 @@ defmodule Mazurka.Resource.Utils.Scope do
           {:arity, 1} ->
             unquote(if_exists).(val)
           {:arity, 2} ->
-            unquote(if_exists).(val, field_name: unquote(var_name), var_type: unquote(var_type))
+            unquote(if_exists).(val, field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type))
         end
       end
 
@@ -71,7 +71,7 @@ defmodule Mazurka.Resource.Utils.Scope do
         _ when type in [:input, :param] ->
 
           # passes user input into input or param value into block
-          fun = apply_argument(var, block, default, name, type)
+          fun = apply_argument(var, block, default, name, type, val_type)
 
           fetch_option(option_fields, fun)
 

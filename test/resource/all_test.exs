@@ -122,13 +122,13 @@ defmodule Test.Mazurka.Resource.All do
 
       let param1 = 2
 
-      param param1, condition: fn _x ->
+      param param1, condition: fn _x, [field_name: :param1, var_type: :param, validation_type: :condition] ->
         {:ok, 123}
       end
 
       let input1 = 2
 
-      input input1, condition: fn _x ->
+      input input1, condition: fn _x, [field_name: :input1, var_type: :input, validation_type: :condition] ->
         {:ok, 123}
       end
 
@@ -136,6 +136,10 @@ defmodule Test.Mazurka.Resource.All do
 
       input input2, default: nil, condition: fn _x ->
         {:ok, 123}
+      end
+
+      input input3, validation: fn x, [field_name: :input3, var_type: :input, validation_type: :validation] ->
+        {:ok, x}
       end
 
       mediatype Hyper do
