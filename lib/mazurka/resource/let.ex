@@ -81,8 +81,9 @@ defmodule Mazurka.Resource.Let do
 
   # a let do with extra options, aka, for example `let foo, option: true do end`
   defmacro let(w, opts, [do: block]) do
+    opts = opts |> Keyword.put(:do, block)
     quote do
-      let(unquote(w), unquote(opts) |> Map.put(:do, unquote(block)))
+      let(unquote(w), unquote(opts))
     end
   end
 
