@@ -5,70 +5,41 @@ defmodule Mazurka.Resource.Utils.Scope do
 
   defmacro __using__(_) do
     quote do
-      Module.register_attribute(__MODULE__, :mazurka_scope, accumulate: true)
+      if !Module.has_attribute?(__MODULE__, :mazurka_scope) do
+        Module.register_attribute(__MODULE__, :mazurka_scope, accumulate: true)
+      end
       @before_compile unquote(__MODULE__)
     end
   end
 
-  # var Utils.input | Utils.params - place where user supplied inputs and params are stored
-  # name :actual name of variable for which result of input, param or let will be stored
-  # type :input | :param | nil
-  # val_type :validation | :condition | nil
-  # block - block of code (if :input or :param then takes an argument)
-  #       - returns {:ok, val} or {:error, message} or true or false depending on new or old
-  #         style validation / condition
-  # error_block - optional for error blocks in old style conditions and validations
-  def define(var, name, type, val_type, block, error_block, default, option_fields) do
+  def apply_argument(var, if_exists, default, var_name, var_type) do
+
     block =
-      if type in [:input, :param] do
-        # passes user input into input or param value into block
-        transform_value(var, name, block, type, default, option_fields)
-      else
-        block
+      quote do
+        case Function.info(unquote(if_exists), :arity) do
+          # backwards compatibility, input foo (no block)
+          {:arity, 1} ->
+            unquote(if_exists).(val)
+          {:arity, 2} ->
+            unquote(if_exists).(val, field_name: unquote(var_name), var_type: unquote(var_type))
+        end
       end
 
     quote do
-      @mazurka_scope {
-        # assigned variable name, if any
-        unquote(name),
-        # :input, :param, nil
-        unquote(type),
-        # :conditon, :validation, nil
-        unquote(val_type),
-        # block of code, if any
-        unquote(Macro.escape(block)),
-        # error block of code, if any
-        unquote(Macro.escape(error_block)),
-        # default value, if any
-        unquote(Macro.escape(default)),
-        # option_fields to draw a default value from, if any
-        unquote(option_fields)
-      }
+      case Map.fetch(unquote(var), unquote(var_name)) do
+        # TODO default == __mazurka_unspecified ?
+        :error -> {:ok, unquote(default)}
+          # function has to return either {:ok, _} or {:error, _}
+        {:ok, val} -> unquote(block)
+      end
     end
   end
 
-  def call_validation_func(f, x, name, var_type) do
-    case Function.info(f, :arity) do
-      {:arity, 1} ->
-        f.(x)
-
-      {:arity, 2} ->
-        f.(x, field_name: name, var_type: var_type)
-
-      _ ->
-        raise "condition / validation function must take between 1 and 2 arguments (value and options)"
-    end
-  end
-
-  defp transform_value(var, name, nil, _, _default, _option_fields) do
-    var_get(var, name)
-  end
-
-  defp transform_value(var, name, fun, var_type, default, option_fields) do
+  defp fetch_option(option_fields, fun) do
     cond do
       option_fields != [] ->
         quote do
-          field = unquote(option_fields) |> Enum.reduce_while(:not_found, fn name, accum ->
+          unquote(option_fields) |> Enum.reduce_while(:not_found, fn name, accum ->
             case Map.fetch(unquote(Utils.opts()), name) do
               :error -> {:cont, accum}
               {:ok, val} -> {:halt, {:ok, val}}
@@ -77,38 +48,60 @@ defmodule Mazurka.Resource.Utils.Scope do
             {:ok, _val} = ok ->
               ok
             :not_found ->
-              Mazurka.Resource.Utils.Scope.call_validation_func(
-                unquote(fun),
-                unquote(var_get(var, name, default)),
-                unquote(name),
-                unquote(var_type)
-              )
+              unquote(fun)
           end
        end
 
-      var ->
-        quote do
-          Mazurka.Resource.Utils.Scope.call_validation_func(
-            unquote(fun),
-            unquote(var_get(var, name, default)),
-            unquote(name),
-            unquote(var_type)
-          )
-        end
-      true ->
-        quote do
-          unquote(fun)
-        end
+      true -> fun
     end
   end
 
-  defp var_get(var, name, default \\ nil) do
-    quote do
-      case Map.fetch(unquote(var), unquote(name)) do
-        :error -> unquote(default)
-        {:ok, val} -> val
+
+  # var Utils.input | Utils.params - place where user supplied inputs and params are stored
+  # name :actual name of variable for which result of input, param or let will be stored
+  # type :input | :param | :let | nil
+  # val_type :validation | :condition | nil
+  # block - block of code (if :input or :param then code takes an argument)
+  #       - returns {:ok, val} or {:error, message} or true or false depending on new or old
+  #         style validation / condition
+  # error_block - optional for error blocks in old style conditions and validations
+  def define(module, var, name, type, val_type, block, error_block, default, option_fields) do
+    block =
+      case type do
+        _ when type in [:input, :param] ->
+
+          # passes user input into input or param value into block
+          fun = apply_argument(var, block, default, name, type)
+
+          fetch_option(option_fields, fun)
+
+        :let ->
+          fetch_option(option_fields, block)
+
+        _ -> block
       end
+
+    # due to compilation timing issues, we can't guarantee a call to this
+    # will happen before other modules will start calling define.
+    if !Module.has_attribute?(module, :mazurka_scope) do
+      Module.register_attribute(module, :mazurka_scope, accumulate: true)
     end
+    Module.put_attribute(module, :mazurka_scope, {
+        # assigned variable name, if any
+        name,
+        # :input, :param, :let
+        type,
+        # :condition, :validation, nil
+        val_type,
+        # block of code, if any
+        block,
+        # error block of code, if any
+        error_block,
+        # default value, if any
+        default,
+        # option_fields to draw a default value from, if any
+        option_fields
+      })
   end
 
   defmacro __before_compile__(env) do

@@ -10,6 +10,8 @@ defmodule Mazurka.Resource.Let do
   end
 
   defmacro let(w, opts \\ []) do
+    module = __CALLER__.module
+
     {w, opts} = case w do
       # support let x = 123
       {:=, _, [{name, _, nil}, []]} -> {name, opts |> Keyword.put(:do, nil)}
@@ -47,7 +49,7 @@ defmodule Mazurka.Resource.Let do
       true -> {:condition, condition}
     end
 
-    Scope.define(nil, name, :let, val_type, block, nil, nil, option_fields)
+    Scope.define(module, nil, name, :let, val_type, block, nil, nil, option_fields)
   end
 
   # let foo = ... -> :foo

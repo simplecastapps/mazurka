@@ -103,7 +103,8 @@ defmodule Mazurka.Resource.Param do
 
     # backwards compatibility with version 1
     opts =
-      if version < 2 do
+      cond do
+        version < 2 ->
         case opts do
           # `param param1` - no code block
           [] ->
@@ -125,10 +126,12 @@ defmodule Mazurka.Resource.Param do
 
           x ->
             x
-        end
-      else
-        # default is not supported in params except as a backwards compatibility hack
+      end
+        is_list(opts) ->
+          # default is not supported in params except as a backwards compatibility hack
         opts |> Keyword.delete(:default)
+        true ->
+          raise "That param format is incompatible with this verison of mazurka. Type h #{__MODULE__}.param/2 for more information."
       end
 
     name = field_to_atom(w)
@@ -174,7 +177,7 @@ defmodule Mazurka.Resource.Param do
 
     module = __CALLER__.module
     Module.put_attribute(module, :mazurka_params, name)
-    Scope.define(Utils.params(), name, :param, val_type, block, nil, default, option_fields)
+    Scope.define(module, Utils.params(), name, :param, val_type, block, nil, default, option_fields)
   end
 
   defp field_to_atom({name, _, nil}) when is_atom(name) do

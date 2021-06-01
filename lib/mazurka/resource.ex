@@ -14,15 +14,16 @@ defmodule Mazurka.Resource do
 
   TODO document condition, event, input, let, link, mediatype, param, params, and validation
   """
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     module = __CALLER__.module
     attr = :__mazurka_resource__
+    version = opts[:version]
     if !Module.get_attribute(module, attr) do
       Module.put_attribute(module, attr, true)
       quote do
         @before_compile unquote(__MODULE__)
 
-        use Mazurka.Resource.Version
+        use Mazurka.Resource.Version, version: unquote(version)
         use Mazurka.Resource.Input
         use Mazurka.Resource.Let
         use Mazurka.Resource.Link

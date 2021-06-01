@@ -65,6 +65,6 @@ defmodule Mazurka.Resource.Validation do
           {second_arg, first_arg}
       end
 
-    Scope.define(nil, nil, nil, :validation, block, message, nil, nil)
+    Scope.define(module, nil, nil, nil, :validation, block, message, nil, nil)
   end
 end

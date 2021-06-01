@@ -171,7 +171,7 @@ defmodule Test.Mazurka.Resource.All do
                # value from let, input skipped because no default on input1
                input1: 2,
                # value from input condition, not skipped because input2 has a default
-               input2: 123,
+               input2: nil,
                all_input: %{
                  # value from input1 condition, here because it was supplied
                  input1: 123
@@ -202,11 +202,9 @@ defmodule Test.Mazurka.Resource.All do
 
       let input2 = 2
 
-      input input2,
-        default: 123,
-        condition: fn _x ->
-          {:ok, 123}
-        end
+      input input2, default: 123, condition: fn _x ->
+        {:ok, 123}
+      end
 
       mediatype Hyper do
         action do
@@ -243,6 +241,47 @@ defmodule Test.Mazurka.Resource.All do
                all_params: %{
                  param1: 123
                }
+             } == body
+  end
+
+  context InputCalledTwice do
+    defmodule Foo do
+      use Mazurka.Resource
+
+      version(1)
+
+      input input1, fn x ->
+        if x do
+          x + 1
+        else
+          nil
+        end
+      end
+
+      mediatype Hyper do
+        action do
+          %{
+            input1_var: input1,
+            input1_all: Input.all() |> Map.get(:input1)
+          }
+        end
+      end
+    end
+  after
+    "action" ->
+      {body, _, _} =
+        Foo.action(
+          [],
+          %{},
+          %{"input1" => 1},
+          %{},
+          nil,
+          %{}
+        )
+
+      assert %{
+               input1_var: 2,
+               input1_all: 2
              } == body
   end
 end

@@ -74,10 +74,6 @@ defmodule Mazurka.Resource.Input do
     """
   end
 
-  def foobar(x) do
-    x |> IO.inspect(label: "foobar!")
-  end
-
   @doc """
   Define an expected input for the resource
 
@@ -128,44 +124,49 @@ defmodule Mazurka.Resource.Input do
 
     There must be at least one validation or condition but not both. If the variable is validated and has no default, then it will not be brought into scope in affordances or in any other condition related code. This is to prevent referencing an unvalidated variable in a context where validation did not occur.
   """
- defmacro input(w, opts \\ []) do
-
+  defmacro input(w, opts \\ []) do
     module = __CALLER__.module
     version = module |> Module.get_attribute(:mazurka_version)
 
     # backwards compatibility with version 1
     opts =
-      if version < 2 do
-        case opts do
-          # `input input1` - no code block
-          [] ->
-            [
-              default: nil,
-              condition:
-                quote do
-                  fn x -> {:ok, x} end
-                end
-            ]
-          # - code block always run, nil if not specified
-          # `input input1, fn x -> x end
-          # `input input1, &IO.puts/1
-          {op, _, _} = block when op in [:fn, :&] ->
-            [
-              default:
-                quote do
-                  unquote(block).(nil)
-                end,
-              condition:
-                quote do
-                  fn x -> {:ok, unquote(block).(x)} end
-                end
-            ]
+      cond do
+        version < 2 ->
+          case opts do
+            # `input input1` - no code block
+            [] ->
+              [
+                default: nil,
+                condition:
+                  quote do
+                    fn x -> {:ok, x} end
+                  end
+              ]
 
-          x ->
-            x
-        end
-      else
-        opts
+            # - code block always run, nil if not specified
+            # `input input1, fn x -> x end
+            # `input input1, &IO.puts/1
+            {op, _, _} = block when op in [:fn, :&] ->
+              [
+                default:
+                  quote do
+                    unquote(block).(nil)
+                  end,
+                condition:
+                  quote do
+                    fn x -> {:ok, unquote(block).(x)} end
+                  end
+              ]
+
+            x ->
+              x
+          end
+
+        is_list(opts) ->
+          opts
+
+        true ->
+          raise "That input format is incompatible with this verison of mazurka. Type h #{__MODULE__}.input/2 for more information."
       end
 
     name = field_to_atom(w)
@@ -210,7 +211,18 @@ defmodule Mazurka.Resource.Input do
       end
 
     Module.put_attribute(module, :mazurka_inputs, name)
-    Scope.define(Utils.input(), name, :input, val_type, block, nil, default, option_fields)
+
+    Scope.define(
+      module,
+      Utils.input(),
+      name,
+      :input,
+      val_type,
+      block,
+      nil,
+      default,
+      option_fields
+    )
   end
 
   defp field_to_atom({name, _, nil}) when is_atom(name) do

@@ -81,6 +81,6 @@ defmodule Mazurka.Resource.Condition do
           {second_arg, first_arg}
       end
 
-    Scope.define(nil, nil, nil, :condition, block, message, nil, nil)
+    Scope.define(module, nil, nil, nil, :condition, block, message, nil, nil)
   end
 end
