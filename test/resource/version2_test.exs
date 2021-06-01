@@ -23,12 +23,10 @@ defmodule Test.Mazurka.Resource.Version2 do
 
       let asdf do
         # TODO inputs with default are visible
-        input25 |> IO.inspect(label: "input25")
         {:ok, true}
       end
 
       param param1, option: true, validation: fn x ->
-        input5 |> IO.inspect(label: "input5")
         {:ok, x}
       end
       #      input input2
