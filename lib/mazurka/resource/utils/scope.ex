@@ -17,7 +17,7 @@ defmodule Mazurka.Resource.Utils.Scope do
     block =
       quote do
         case Function.info(unquote(if_exists), :arity) do
-          # backwards compatibility, input foo (no block)
+          # backwards compatibility, input foo, fn x -> ... end
           {:arity, 1} ->
             unquote(if_exists).(val)
           {:arity, 2} ->
