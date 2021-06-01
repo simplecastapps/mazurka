@@ -79,6 +79,13 @@ defmodule Mazurka.Resource.Let do
     Scope.define(module, nil, name, :let, val_type, block, nil, nil, option_fields)
   end
 
+  # a let do with extra options, aka, for example `let foo, option: true do end`
+  defmacro let(w, opts, [do: block]) do
+    quote do
+      let(unquote(w), unquote(opts) |> Map.put(:do, unquote(block)))
+    end
+  end
+
   # let foo = ... -> :foo
   defp field_to_atom({name, _, nil}) when is_atom(name) do
     name

@@ -4,13 +4,16 @@ defmodule Test.Mazurka.Resource.Version2 do
 
   context "Simple" do
     defmodule Foo do
+      def foobar(x) do
+        x
+      end
 
       use Mazurka.Resource
       version 1
 
       input input1
       input input1, fn x -> x end
-      input input1, &Mazurka.Resource.Input.foobar/1
+      input input1, &foobar/1
 
       input input25, fn x -> if x do x else :nothing end end
 
@@ -39,6 +42,9 @@ defmodule Test.Mazurka.Resource.Version2 do
 
 
       let foo2 do
+      end
+
+      let foo3, option: true do
       end
 
 
