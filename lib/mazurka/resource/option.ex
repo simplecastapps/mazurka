@@ -39,13 +39,10 @@ defmodule Mazurka.Resource.Option do
       end)
 
     if type == :atom do
-      quote do
-        unquote({:%{}, [], all_options})
-      end
+      {:%{}, [], all_options}
     else
-      quote do
-        unquote({:%{}, [], all_options |> Enum.map(fn {k, v} -> {to_string(k), v} end)})
-      end
+      all_options = all_options |> Enum.map(fn {k, v} -> {to_string(k), v} end)
+      {:%{}, [], all_options}
     end
   end
 
@@ -71,13 +68,10 @@ defmodule Mazurka.Resource.Option do
       |> Enum.to_list()
 
     if type == :atom do
-      quote do
-        unquote({:%{}, [], all_bindings})
-      end
+      {:%{}, [], all_bindings}
     else
-      quote do
-        unquote({:%{}, [], all_bindings |> Enum.map(fn {k, v} -> {to_string(k), v} end)})
-      end
+      all_bindings = all_bindings |> Enum.map(fn {k, v} -> {to_string(k), v} end)
+      {:%{}, [], all_bindings}
     end
   end
 end
