@@ -131,7 +131,7 @@ defmodule Mazurka.Resource.Param do
           # default is not supported in params except as a backwards compatibility hack
         opts |> Keyword.delete(:default)
         true ->
-          raise "That param format is incompatible with this verison of mazurka. Type h #{__MODULE__}.param/2 for more information."
+          raise "FOrmat for param #{field_to_atom(w)} is incompatible with this verison of mazurka. Type h #{__MODULE__}.param/2 for more information."
       end
 
     name = field_to_atom(w)

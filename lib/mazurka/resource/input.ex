@@ -166,7 +166,7 @@ defmodule Mazurka.Resource.Input do
           opts
 
         true ->
-          raise "That input format is incompatible with this verison of mazurka. Type h #{__MODULE__}.input/2 for more information."
+          raise "Format for input #{field_to_atom(w)} is incompatible with this verison of mazurka. Type h #{__MODULE__}.input/2 for more information."
       end
 
     name = field_to_atom(w)
