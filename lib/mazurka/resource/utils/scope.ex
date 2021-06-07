@@ -27,7 +27,6 @@ defmodule Mazurka.Resource.Utils.Scope do
 
     quote do
       case Map.fetch(unquote(var), unquote(var_name)) do
-        # TODO default == __mazurka_unspecified ?
         :error -> {:ok, unquote(default)}
           # function has to return either {:ok, _} or {:error, _}
         {:ok, val} -> unquote(block)
@@ -251,8 +250,10 @@ defmodule Mazurka.Resource.Utils.Scope do
   # Only scope relevant to affordances
   defp filter_affordance_relevant(scope) do
     scope
-    |> Enum.filter(fn {_name, _type, val_type, _block, _error_block, _default, _option_fields} ->
-      !val_type or val_type == :condition
+    |> Enum.filter(fn {_name, _type, val_type, _block, _error_block, default, _option_fields} ->
+      !val_type or val_type == :condition or
+      # allow validated bindings if they have a default
+      (val_type == :validation && default != :__mazurka_unspecified)
     end)
   end
 
