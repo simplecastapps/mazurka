@@ -35,8 +35,16 @@ defmodule Mazurka.Resource.Utils.Scope do
   end
 
   defp fetch_option(option_fields, fun) do
-    cond do
-      option_fields != [] ->
+    case option_fields do
+      [] -> fun
+      [field] ->
+        quote do
+          case Map.fetch(unquote(Utils.opts()), unquote(field)) do
+            :error -> unquote(fun)
+            {:ok, _val} = ok -> ok
+          end
+        end
+      _ ->
         quote do
           unquote(option_fields) |> Enum.reduce_while(:not_found, fn name, accum ->
             case Map.fetch(unquote(Utils.opts()), name) do
@@ -50,8 +58,6 @@ defmodule Mazurka.Resource.Utils.Scope do
               unquote(fun)
           end
        end
-
-      true -> fun
     end
   end
 
@@ -70,6 +76,8 @@ defmodule Mazurka.Resource.Utils.Scope do
         _ when type in [:input, :param] ->
 
           # passes user input into input or param value into block
+          # TODO this really needs to be done upon rendering the scope rather than at
+          # definition time to help optimize away code that will never be hit.
           fun = apply_argument(var, block, default, name, type, val_type)
 
           fetch_option(option_fields, fun)
