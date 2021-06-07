@@ -148,13 +148,6 @@ defmodule Mazurka.Resource.Utils.Scope do
         var!(conn) = unquote(Utils.conn())
         _ = var!(conn)
 
-        #        unquote(Utils.params())
-        #        |> Enum.map(fn {k, v} -> {k, v |> to_string()} end)
-        #        |> case do
-        #          [] -> :ok
-        #          xs -> xs |> Logger.metadata()
-        #        end
-
         mazurka_error__ = :no_error
         unquote_splicing(action_scope_splice)
         {mazurka_error__, {unquote_splicing(action_variable_map)}}
