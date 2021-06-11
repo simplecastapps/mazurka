@@ -309,7 +309,12 @@ defmodule Mazurka.Resource.Param do
     end
   end
 
+  # These are not useful in real code and are purely useful for testing.
   defmacro all_unaltered() do
     Utils.params()
+  end
+
+  defmacro all_raw() do
+    Utils.raw_input()
   end
 end
