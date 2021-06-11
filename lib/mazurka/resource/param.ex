@@ -19,8 +19,8 @@ defmodule Mazurka.Resource.Param do
 
       def params(type \\ :atom) do
         case type do
-          :atom -> @mazurka_params
-          :binary -> @mazurka_params |> Enum.map(&to_string/1)
+          :atom -> @mazurka_params |> Enum.uniq()
+          :binary -> @mazurka_params |> Enum.uniq() |> Enum.map(&to_string/1)
         end
       end
     end
@@ -270,6 +270,23 @@ defmodule Mazurka.Resource.Param do
         {missing, nil_params}
     end
   end
+
+  @doc """
+    This returns all validated (via condition) parameters.
+
+    Returned as a Map(:atom => :term), where every key is a param
+    in the route route and every term was either submitted by the user
+    and has been validated properly or was passed in as an option
+    via link_to (or option: feature) in a prior route (and is
+    therefore trustworthy).
+
+    * type - Return keys as strings or atoms. Strings option is there fore
+    backward compatibility only.
+
+    This can only be used in the action or affordance blocks of a route because
+    it returns the final validated values of all variables after they have been
+    manipulated by various param and let statements defined in the route.
+  """
   defmacro all(type \\ :atom) do
     # keyword list from variable atom to stored variable name
     all_params =
@@ -277,7 +294,7 @@ defmodule Mazurka.Resource.Param do
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
       |> Mazurka.Resource.Utils.Scope.filter_by_params()
-      |> Enum.map(fn {name, :param, _, _, _, _default, _} ->
+      |> Enum.map(fn {_var, name, :param, _, _, _, _default, _} ->
           {name, Macro.var(name, nil)}
       end)
 

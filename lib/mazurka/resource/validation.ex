@@ -33,7 +33,7 @@ defmodule Mazurka.Resource.Validation do
     module = __CALLER__.module
     version = module |> Module.get_attribute(:mazurka_version)
 
-    if version >= 2 && is_nil(second_arg) do
+    if version >= 2 && second_arg == :__mazurka_unspecified do
       raise "validations must have an error message!"
     end
 
@@ -65,6 +65,6 @@ defmodule Mazurka.Resource.Validation do
           {second_arg, first_arg}
       end
 
-    Scope.define(module, nil, nil, nil, :validation, block, message, nil, nil)
+    Scope.define(module, nil, nil, nil, :validation, block, message, :__mazurka_unspecified, nil)
   end
 end

@@ -18,8 +18,8 @@ defmodule Mazurka.Resource.Input do
 
       def inputs(type \\ :atom) do
         case type do
-          :atom -> @mazurka_inputs
-          :binary -> @mazurka_inputs |> Enum.map(&to_string/1)
+          :atom -> @mazurka_inputs |> Enum.uniq()
+          :binary -> @mazurka_inputs |> Enum.uniq() |> Enum.map(&to_string/1)
         end
       end
     end
@@ -231,8 +231,28 @@ defmodule Mazurka.Resource.Input do
 
   defp field_to_atom(name) when is_atom(name) do
     name
-  end
+    end
 
+  @doc """
+    This returns all validated submitted inputs the user submitted.
+    Returned as a Map(:atom => :term), where every key exists
+    as an input in the route and every term was submitted by the user
+    and each one has either been validated properly, is the default
+    value for that input, or it has been passed in as an option
+    from a an option through `link_to` (or option: feature) from a prior route
+    (and is therefore trustworthy).
+
+    * type - Return keys as strings or atoms. Strings option is there fore
+    backward compatibility only.
+
+    This can only be used in the action or affordance blocks of a route because
+    it returns the final validated values of all variables after they have been
+    manipulated by various input and let statements defined in the route.
+
+    This can be used to find out if a user has submitted a particular input,
+    aiding in distinguishing between nil as a value and the absence of a input.
+    >   Input.all() |> Map.exists?(:input_name)
+  """
   defmacro all(type \\ :atom) do
     # keyword list from variable atom to stored variable name
     all_inputs =
@@ -240,7 +260,7 @@ defmodule Mazurka.Resource.Input do
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
       |> Mazurka.Resource.Utils.Scope.filter_by_inputs()
-      |> Enum.map(fn {name, :input, _, _, _, default, _} ->
+      |> Enum.map(fn {_var, name, :input, _, _, _, default, _} ->
         if default == :__mazurka_unspecified do
           {name, Utils.hidden_var(name)}
         else
@@ -272,5 +292,36 @@ defmodule Mazurka.Resource.Input do
         |> Map.new()
       end
     end
+  end
+
+  @doc """
+    Returns all untrusted input that user submitted, but only
+    input that is supported by this route.
+    Map(:atom => :term) because we at least know that the input
+    keys exist as atoms already in this route. The values however
+    are completely untrustworthy. They have not been validated nor
+    they have not been transformed at all by any code in this route.
+
+    Since no transformations are ever performed on the data, it can
+    at least be used anywhere in the route (ie outside of the action
+    or affordance body).
+  """
+  defmacro all_unaltered() do
+    Utils.input()
+  end
+
+  @doc """
+    Returns all untrusted input that user submitted, even if route
+    does not support these specific inputs. The result is a
+    Map(string => :term) because the input is completely untrusted
+    and so keys cannot be converted to atoms safely and no validation
+    or transformations of any kind will have been performed on any
+    of the values.
+
+    This can only really be used in the action as I can't think of
+    any legitimate use cases outside of that.
+  """
+  defmacro all_raw() do
+    Utils.raw_input()
   end
 end

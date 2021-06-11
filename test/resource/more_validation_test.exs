@@ -40,6 +40,24 @@ defmodule Test.Mazurka.Resource.MoreValidation do
 
       input input2, validation: &MoreValidation.positive_integer/2
       input input3, validation: &MoreValidation.positive_integer/1
+      input input4, validation: fn x, _opts ->
+        # {:ok, input3} # compile error, no such variable
+        {:ok, x}
+      end
+
+      input input5, validation: fn x, _opts ->
+        {:ok, x}
+      end
+
+      let input5 = "input5"
+
+      param param2, condition: fn _x ->
+        if input1 do
+          {:ok, input1}
+        else
+          {:error, "param2 error"}
+        end
+      end
 
       # can't reference a validation variable in a condition
       #input input2 condition fn x ->
@@ -109,7 +127,7 @@ defmodule Test.Mazurka.Resource.MoreValidation do
 
   after
     "action" ->
-    {body, _, _} = Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input2" => 2, "input3" => 3}, %{})
+    {body, _, _} = Foo.action([], %{"param1" => 2, "param2" => 3}, %{"input1" => 1, "input2" => 2, "input3" => 3}, %{})
 
     assert body == %{
       "param1" => 4,
@@ -126,50 +144,53 @@ defmodule Test.Mazurka.Resource.MoreValidation do
         let1: 4,
         let2: 5,
         let3: "let3",
-        let4: "let4"
+        let4: "let4",
+        input5: "input5"
       },
       "all_bindings" => %{
         param1: 4,
+        param2: 5,
         input1: 5,
         input2: 2,
         input3: 3,
+        # input4 missing because it is an input that was not sent
+        input5: "input5", # in bindings because of let
         let0: "let0",
         let1: 4,
         let2: 5,
         let3: "let3",
         let4: "let4"
-
       }
     }
 
     "affordance" ->
-    {body, _} = Foo.affordance([], %{"param1" => 2}, %{"input1" => "1"}, %{}, Router)
+    {body, _} = Foo.affordance([], %{"param1" => 2, "param2" => 3}, %{"input1" => "1"}, %{}, Router)
 
     assert body == %{"param1" => 4, "href" => "/param1/2?input1=1"}
 
     "action with various failure conditions" ->
 
     exc = assert_raise Mazurka.ValidationException, fn ->
-      Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input2" => "-1"}, %{})
+      Foo.action([], %{"param1" => 2, "param2" => 3}, %{"input1" => 1, "input2" => "-1"}, %{})
     end
     assert exc.message ==  "input input2 must be an integer greater than 0"
 
     exc = assert_raise Mazurka.ValidationException, fn ->
-      Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input2" => "1", "input3" => -2}, %{})
+      Foo.action([], %{"param1" => 2, "param2" => 3}, %{"input1" => 1, "input2" => "1", "input3" => -2}, %{})
     end
     # input3 uses a slightly different validation function that input2
     assert exc.message ==  "must be an integer greater than 0"
 
-    assert Foo.params() |> Enum.sort == [:param1] |> Enum.sort
-    assert Foo.params(:binary) |> Enum.sort == ["param1"] |> Enum.sort
-    assert Foo.inputs() |> Enum.sort == [:input1, :input2, :input3, :let4] |> Enum.sort
-    assert Foo.inputs(:binary) |> Enum.sort == ["input1", "input2", "input3", "let4"] |> Enum.sort
+    assert Foo.params() |> Enum.sort == [:param1, :param2] |> Enum.sort
+    assert Foo.params(:binary) |> Enum.sort == ["param1", "param2"] |> Enum.sort
+    assert Foo.inputs() |> Enum.sort == [:input1, :input2, :input3, :input4, :input5, :let4] |> Enum.sort
+    assert Foo.inputs(:binary) |> Enum.sort == ["input1", "input2", "input3", "input4", "input5", "let4"] |> Enum.sort
 
+
+    #     "affordance" ->
+    #       assert {_, _} = Foo.affordance([], %{"param1" => "param1"}, %{}, %{}, Router)
     #
-    #    "affordance" ->
-    #      assert {_, _} = Foo.affordance([], %{"param1" => "param1"}, %{}, %{}, Router)
-    #
-    #    "affordance validation success" ->
-    #      assert {_, _} = Foo.affordance([], %{"param1" => "bar"}, %{}, %{}, Router)
+    #     "affordance validation success" ->
+    #       assert {_, _} = Foo.affordance([], %{"param1" => "bar"}, %{}, %{}, Router)
   end
 end

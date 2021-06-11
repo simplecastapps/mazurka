@@ -9,9 +9,15 @@ defmodule Test.Mazurka.Resource.Link do
 
       param foo
 
+      input foo_supported
+
       mediatype Hyper do
         action do
-          %{"foo" => foo}
+          %{
+            "foo" => foo,
+            "input" => Input.all(),
+            "raw_input" => Input.all_raw()
+          }
         end
       end
     end
@@ -41,8 +47,18 @@ defmodule Test.Mazurka.Resource.Link do
     end
   after
     "Foo.action" ->
-      {body, content_type, _} = Foo.action([], %{"foo" => "123"}, %{}, %{}, Router)
-      assert %{"foo" => "123", "href" => "/foo/123"} == body
+    {body, content_type, _} = Foo.action([], %{"foo" => "123"}, %{
+      "foo_unsupported" => "321",
+      "foo_supported" => "asdf"
+      # TODO should this be supported?
+      # "foo_supported" => [1,2,3]
+    }, %{}, Router)
+      assert %{
+        "foo" => "123",
+        "raw_input" => %{"foo_unsupported" => "321", "foo_supported" => "asdf"},
+        "input" => %{foo_supported: "asdf"},
+        "href" => "/foo/123?foo_supported=asdf"
+      } == body
       assert {"application", "json", %{}} = content_type
 
     "Foo.affordance" ->
@@ -251,11 +267,20 @@ defmodule Test.Mazurka.Resource.Link do
         {:ok, x}
       end
 
-      # use input1 from Bar route (foo doesn't exist)
-      input input4, option: [:foo, :input1, :whatevs], default: "input4_default", condition: fn x ->
+      # use input1 from Bar route (foo2 doesn't exist)
+      input input4, option: [:foo2, :input1, :whatevs], default: "input4_default", condition: fn x ->
         {:ok, x}
       end
 
+      # use foo from Bar route (passed in as a parameter)
+      input input5, option: [:foo, :input1, :whatevs], default: "input5_default", condition: fn x ->
+        {:ok, x}
+      end
+
+      # use default value (none of these exist)
+      input input6, option: [:foo2, :input23, :whatevs], default: "input6_default", condition: fn x ->
+        {:ok, x}
+      end
 
       mediatype Hyper do
         affordance do
@@ -264,7 +289,9 @@ defmodule Test.Mazurka.Resource.Link do
             "input1" => input1 <> "_aff",
             "input2" => input2 <> "_aff",
             "input3" => input3 <> "_aff",
-            "input4" => input4 <> "_aff"
+            "input4" => input4 <> "_aff",
+            "input5" => input5 <> "_aff",
+            "input6" => input6 <> "_aff"
           }
         end
         action do
@@ -273,7 +300,9 @@ defmodule Test.Mazurka.Resource.Link do
             "input1" => input1 <> "_action",
             "input2" => input2 <> "_action",
             "input3" => input3 <> "_action",
-            "input4" => input4 <> "_action"
+            "input4" => input4 <> "_action",
+            "input5" => input5 <> "_action",
+            "input6" => input6 <> "_action"
           }
         end
       end
@@ -304,6 +333,8 @@ defmodule Test.Mazurka.Resource.Link do
         "input2" => "input2_default_action",
         "input3" => "input3_default_action",
         "input4" => "input4_default_action",
+        "input5" => "input5_default_action",
+        "input6" => "input6_default_action",
         "href" => "/foo/foo"
       } == res
 
@@ -318,6 +349,8 @@ defmodule Test.Mazurka.Resource.Link do
           "input2" => "input2_default_aff",
           "input3" => "input1_alt_aff",
           "input4" => "input1_alt_aff",
+          "input5" => "newfoo_aff",
+          "input6" => "input6_default_aff",
           "href" => "/foo/newfoo"
           }
         } == res

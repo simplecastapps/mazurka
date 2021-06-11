@@ -35,7 +35,7 @@ defmodule Mazurka.Resource.Action do
 
   defmacro action(mediatype, [do: block]) do
     quote do
-      defp __mazurka_match_action__(unquote(mediatype) = unquote(Utils.mediatype), unquote_splicing(Utils.arguments), unquote(Utils.scope)) do
+      defp __mazurka_match_action__(unquote(mediatype) = unquote(Utils.mediatype), unquote_splicing(Utils.arguments), unquote(Utils.scope), unquote(Utils.raw_input)) do
 
         Mazurka.Resource.Utils.Scope.dump(:action)
         var!(conn) = unquote(Utils.conn)
@@ -58,13 +58,14 @@ defmodule Mazurka.Resource.Action do
               conn: unquote(Utils.conn)
             ]
           mediatype ->
+            unquote(Utils.raw_input) = unquote(Utils.input)
             unquote(Utils.params) = __mazurka_filter_params__(unquote(Utils.params))
             unquote(Utils.input) = __mazurka_filter_inputs__(unquote(Utils.input))
             case __mazurka_check_params__(unquote(Utils.params)) do
               {[], []} ->
                 case __mazurka_action_scope_check__(mediatype, unquote_splicing(Utils.arguments)) do
                   {:no_error, scope} ->
-                    __mazurka_match_action__(mediatype, unquote_splicing(Utils.arguments), scope)
+                    __mazurka_match_action__(mediatype, unquote_splicing(Utils.arguments), scope, unquote(Utils.raw_input))
                   {{:validation, error_message}, _} ->
                     raise Mazurka.ValidationException, message: error_message, conn: unquote(Utils.conn)
                   {{:condition, error_message}, _} = x ->

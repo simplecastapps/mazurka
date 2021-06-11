@@ -17,6 +17,10 @@ defmodule Mazurka.Resource.Utils do
     {:'$mazurka_input', [warn: false], __MODULE__}
   end
 
+  def raw_input do
+    {:'$mazurka_raw_input', [warn: false], __MODULE__}
+  end
+
   def conn do
     {:'$mazurka_conn', [warn: false], __MODULE__}
   end

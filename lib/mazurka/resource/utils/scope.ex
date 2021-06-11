@@ -16,17 +16,19 @@ defmodule Mazurka.Resource.Utils.Scope do
 
     block =
       quote do
-        case Function.info(unquote(if_exists), :arity) do
+        f = unquote(if_exists)
+        case Function.info(f, :arity) do
           # backwards compatibility, input foo, fn x -> ... end
           {:arity, 1} ->
-            unquote(if_exists).(val)
+            f.(val)
           {:arity, 2} ->
-            unquote(if_exists).(val, field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type))
+            f.(val, field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type))
         end
       end
 
     quote do
       case Map.fetch(unquote(var), unquote(var_name)) do
+        # TODO default == __mazurka_unspecified ?
         :error -> {:ok, unquote(default)}
           # function has to return either {:ok, _} or {:error, _}
         {:ok, val} -> unquote(block)
@@ -35,7 +37,7 @@ defmodule Mazurka.Resource.Utils.Scope do
   end
 
   defp fetch_option(option_fields, fun) do
-    case option_fields do
+    case option_fields || [] do
       [] -> fun
       [field] ->
         quote do
@@ -44,7 +46,7 @@ defmodule Mazurka.Resource.Utils.Scope do
             {:ok, _val} = ok -> ok
           end
         end
-      _ ->
+      option_fields ->
         quote do
           unquote(option_fields) |> Enum.reduce_while(:not_found, fn name, accum ->
             case Map.fetch(unquote(Utils.opts()), name) do
@@ -71,29 +73,14 @@ defmodule Mazurka.Resource.Utils.Scope do
   #         style validation / condition
   # error_block - optional for error blocks in old style conditions and validations
   def define(module, var, name, type, val_type, block, error_block, default, option_fields) do
-    block =
-      case type do
-        _ when type in [:input, :param] ->
-
-          # passes user input into input or param value into block
-          # TODO this really needs to be done upon rendering the scope rather than at
-          # definition time to help optimize away code that will never be hit.
-          fun = apply_argument(var, block, default, name, type, val_type)
-
-          fetch_option(option_fields, fun)
-
-        :let ->
-          fetch_option(option_fields, block)
-
-        _ -> block
-      end
-
     # due to compilation timing issues, we can't guarantee a call to this
     # will happen before other modules will start calling define.
     if !Module.has_attribute?(module, :mazurka_scope) do
       Module.register_attribute(module, :mazurka_scope, accumulate: true)
     end
     Module.put_attribute(module, :mazurka_scope, {
+        # Utils.input, Utils.params, Utils.options
+        var,
         # assigned variable name, if any
         name,
         # :input, :param, :let
@@ -127,13 +114,13 @@ defmodule Mazurka.Resource.Utils.Scope do
     action_scope_splice =
       Module.get_attribute(env.module, :mazurka_scope)
       |> Enum.reverse()
-      |> scope_splice()
+      |> scope_splice(:action)
 
     affordance_scope_splice =
       Module.get_attribute(env.module, :mazurka_scope)
       |> Enum.reverse()
       |> filter_affordance_relevant()
-      |> scope_splice()
+      |> scope_splice(:affordance)
 
     quote do
       defp __mazurka_affordance_scope_check__(
@@ -144,7 +131,7 @@ defmodule Mazurka.Resource.Utils.Scope do
         _ = var!(conn)
 
         mazurka_error__ = :no_error
-        unquote_splicing(affordance_scope_splice)
+        unquote(affordance_scope_splice)
         {mazurka_error__, {unquote_splicing(affordance_variable_map)}}
       end
 
@@ -156,17 +143,19 @@ defmodule Mazurka.Resource.Utils.Scope do
         _ = var!(conn)
 
         mazurka_error__ = :no_error
-        unquote_splicing(action_scope_splice)
+        unquote(action_scope_splice)
         {mazurka_error__, {unquote_splicing(action_variable_map)}}
       end
     end
   end
 
-  defp scope_splice(scope) do
-    scope
-    |> Enum.map(fn {name, type, val_type, block, error_block, default, _} ->
+  defp scope_splice(scope, scope_type) when scope_type in [:action, :affordance] do
+    res = scope
+    |> Enum.map(fn {var_type, name, type, val_type, block, error_block, default, option_fields}->
       var =
         cond do
+          # inputs are optional, and if there is no default value, their binding should be hidden from use
+          # as a variable in any inputs, params, lets, or blocks because they may not have a defined value.
           name && type == :input && default == :__mazurka_unspecified ->
             Utils.hidden_var(name)
 
@@ -177,7 +166,33 @@ defmodule Mazurka.Resource.Utils.Scope do
             nil
         end
 
-      run_blocks =
+      original_block = block
+
+      block =
+        case type do
+          # inputs and params take an argument
+          _ when type in [:input, :param] ->
+
+            # specifically validation blocks in the affordance are never run
+            if val_type == :validation and scope_type == :affordance do
+              # since the block is never run, we should use the default if there is one
+              if default != :__mazurka_unspecified do
+                quote do
+                  {:ok, unquote(default)}
+                end
+              end
+            else
+              apply_argument(var_type, block, default, name, type, val_type)
+          end
+          # let blocks should just be executed
+          _ -> block
+        end
+
+      # if an option was passed in and this field accepts it, just replace the block with it
+      # entirely
+      block = fetch_option(option_fields, block)
+
+      run_block =
         cond do
           # eg. `input foo`, `input foo, &bar/1` - where the block just runs code, nothing else
           block && !val_type ->
@@ -187,8 +202,8 @@ defmodule Mazurka.Resource.Utils.Scope do
 
           # block that sets a variable on success. `input x  fn x -> {:ok, val} end`
           name && block && !error_block ->
-            case block do
-              # Prevent match warnings if returning straight up {:ok, ...} or {:error, ...}
+            case original_block do
+              # Prevent match warnings if returning plain {:ok, ...} or {:error, ...}
               {:ok, code} ->
                 quote do
                   {mazurka_error__, unquote(code)}
@@ -240,35 +255,32 @@ defmodule Mazurka.Resource.Utils.Scope do
       # If there is no error yet and we are supposed to run these
       # blocks and assign this var, run them and assign it
       quote do
-        # TODO FIXME overwriting variable!
         {mazurka_error__, unquote(var)} =
           if mazurka_error__ != :no_error do
             {mazurka_error__, nil}
           else
-            unquote(run_blocks)
+            unquote(run_block)
           end
-
         _ = unquote(var)
       end
-      |> elem(2)
     end)
-    |> Enum.concat()
+    quote do
+      unquote_splicing(res)
+    end
   end
 
   # Only scope relevant to affordances
   defp filter_affordance_relevant(scope) do
     scope
-    |> Enum.filter(fn {_name, _type, val_type, _block, _error_block, default, _option_fields} ->
-      !val_type or val_type == :condition or
-      # allow validated bindings if they have a default
-      (val_type == :validation && default != :__mazurka_unspecified)
+    |> Enum.filter(fn {_var, _name, _type, val_type, _block, _error_block, default, _option_fields} ->
+      val_type == :condition || (val_type == :validation && default != :__mazurka_unspecified)
     end)
   end
 
   def filter_by_bindings(scope) do
     scope
     |> Enum.filter(fn
-      {nil, _, _, _, _, _, _} -> false
+      {_var, nil, _, _, _, _, _, _} -> false
       _ -> true
     end)
   end
@@ -276,7 +288,7 @@ defmodule Mazurka.Resource.Utils.Scope do
   def filter_by(scope, x) when x in [:input, :param, :let] do
     scope
     |> Enum.filter(fn
-      {_name, ^x, _, _, _, _, _} -> true
+      {_var, _name, ^x, _, _, _, _, _} -> true
       _ -> false
     end)
 
@@ -297,7 +309,7 @@ defmodule Mazurka.Resource.Utils.Scope do
   def filter_by_options(scope) do
     scope
     |> Enum.filter(fn
-      {_name, _, _, _, _, _, option_fields} when option_fields != [] ->
+      {_var, _name, _, _, _, _, _, option_fields} when option_fields != [] ->
         true
       _ -> false
     end)
@@ -306,10 +318,9 @@ defmodule Mazurka.Resource.Utils.Scope do
 
   def scope_binding_names(scope, _opts \\ []) do
     scope
-      |> filter_by_bindings()
+    |> filter_by_bindings()
     |> Enum.map(fn
-      # TODO strip inputs
-      {name, type, _, _, _, default, _} ->
+      {_var, name, type, _, _, _, default, _} ->
         if type == :input && default == :__mazurka_unspecified do
           Utils.hidden_var(name)
         else

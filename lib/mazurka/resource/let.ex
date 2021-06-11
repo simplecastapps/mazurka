@@ -76,7 +76,7 @@ defmodule Mazurka.Resource.Let do
       true -> {:condition, condition}
     end
 
-    Scope.define(module, nil, name, :let, val_type, block, nil, nil, option_fields)
+    Scope.define(module, nil, name, :let, val_type, block, nil, :__mazurka_unspecified, option_fields)
   end
 
   # a let do with extra options, aka, for example `let foo, option: true do end`
@@ -124,13 +124,13 @@ defmodule Mazurka.Resource.Let do
       |> Enum.reverse()
       |> Mazurka.Resource.Utils.Scope.filter_by_lets()
       |> Enum.map(fn
-        {name, :input, _, _, _, default, _} ->
+        {_var, name, :input, _, _, _, default, _} ->
           if default == :__mazurka_unspecified do
             []
           else
             [{name, Macro.var(name, nil)}]
           end
-          {name, _, _, _, _, _default, _} -> [{name, Macro.var(name, nil)}]
+          {_var, name, _, _, _, _, _default, _} -> [{name, Macro.var(name, nil)}]
       end)
       |> Enum.concat()
      # Enum.uniq_by first duplicate key is winner, we want last.
@@ -147,5 +147,4 @@ defmodule Mazurka.Resource.Let do
       end
     end
   end
-
 end

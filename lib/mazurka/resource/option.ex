@@ -34,7 +34,7 @@ defmodule Mazurka.Resource.Option do
       |> Enum.reverse()
       |> Mazurka.Resource.Utils.Scope.filter_by_options()
       |> Mazurka.Resource.Utils.Scope.filter_by_bindings()
-      |> Enum.map(fn {name, _, _, _, _, _default, _} ->
+      |> Enum.map(fn {_var, name, _, _, _, _, _default, _} ->
         {name, Macro.var(name, nil)}
       end)
 
@@ -48,30 +48,46 @@ defmodule Mazurka.Resource.Option do
 
   defmacro all_bindings(type \\ :atom) do
     # keyword list from variable atom to stored variable name
+
     all_bindings =
       __CALLER__.module
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
       |> Mazurka.Resource.Utils.Scope.filter_by_bindings()
       |> Enum.map(fn
-          {name, :input, _, _, _, default, _} ->
+          {_var, name, :input, _, _, _, default, _} ->
         if default == :__mazurka_unspecified do
-          {name, Utils.hidden_var(name)}
+          {name, {:input, Utils.hidden_var(name)}}
         else
-          {name, Macro.var(name, nil)}
+          {name, {:input, Macro.var(name, nil)}}
         end
 
-        {name, _, _, _, _, _default, _} ->
-          {name, Macro.var(name, nil)}
+        {_var, name, input_type, _, _, _, _default, _} ->
+          {name, {input_type, Macro.var(name, nil)}}
       end)
       |> Map.new()
       |> Enum.to_list()
 
     if type == :atom do
-      {:%{}, [], all_bindings}
+      quote do
+        supplied_inputs = unquote(Utils.input()) |> Map.keys()
+
+        unquote(all_bindings) |> Enum.filter(fn
+          {k, {:input, v}} -> k in supplied_inputs
+          _ -> true
+        end)
+        |> Enum.map(fn {k, {_, v}} -> {k, v} end) |> Map.new()
+      end
     else
-      all_bindings = all_bindings |> Enum.map(fn {k, v} -> {to_string(k), v} end)
-      {:%{}, [], all_bindings}
+      quote do
+        supplied_inputs = unquote(Utils.input()) |> Map.keys()
+
+        unquote(all_bindings) |> Enum.filter(fn
+          {k, {:input, v}} -> k in supplied_inputs
+          _ -> true
+        end)
+        |> Enum.map(fn {k, {_, v}} -> {k |> to_string(), v} end) |> Map.new()
+      end
     end
   end
 end
