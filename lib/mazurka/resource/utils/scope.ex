@@ -12,38 +12,54 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  def apply_argument(var, if_exists, default, var_name, var_type, val_type) do
+  def apply(f, val, opts) do
+    case Function.info(f, :arity) do
+      # backwards compatibility, input foo, fn x -> ... end
+      {:arity, 1} ->
+        f.(val)
+      {:arity, 2} ->
+        f.(val, opts)
+    end
+  end
 
-    block =
-      quote do
-        f = unquote(if_exists)
-        case Function.info(f, :arity) do
-          # backwards compatibility, input foo, fn x -> ... end
-          {:arity, 1} ->
-            f.(val)
-          {:arity, 2} ->
-            f.(val, field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type))
-        end
+
+  defp apply_func(f, variable, var_name, var_type, val_type) do
+    applyvar = Macro.unique_var(:apply, nil)
+    fvar = Macro.unique_var(:f, nil)
+    function = quote do
+      unquote(applyvar) = fn unquote(variable) ->
+        unquote(fvar) = unquote(f)
+        MSC.apply(unquote(fvar), unquote(variable), field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type))
       end
+    end
 
+    exec = quote do
+      unquote(applyvar).(unquote(variable))
+    end
+    {function, exec}
+  end
+
+  def fetch_var(var, variable, apply, default, var_name) do
     quote do
       case Map.fetch(unquote(var), unquote(var_name)) do
-        # TODO default == __mazurka_unspecified ?
+        # If var is not fetchable and default is ever :__mazurka_unspecified
+        # then that is a serious bug.
         :error -> {:ok, unquote(default)}
           # function has to return either {:ok, _} or {:error, _}
-        {:ok, val} -> unquote(block)
+        {:ok, unquote(variable)} -> unquote(apply)
       end
     end
   end
 
-  defp fetch_option(option_fields, fun) do
+  defp fetch_option(option_fields, variable, apply, block) do
     case option_fields || [] do
-      [] -> fun
+      [] -> block
       [field] ->
         quote do
           case Map.fetch(unquote(Utils.opts()), unquote(field)) do
-            :error -> unquote(fun)
-            {:ok, _val} = ok -> ok
+            :error -> unquote(block)
+            {:ok, unquote(variable)} ->
+              unquote(apply)
           end
         end
       option_fields ->
@@ -54,10 +70,10 @@ defmodule Mazurka.Resource.Utils.Scope do
               {:ok, val} -> {:halt, {:ok, val}}
             end
           end) |> case do
-            {:ok, _val} = ok ->
-              ok
+            {:ok, unquote(variable)} ->
+              unquote(apply)
             :not_found ->
-              unquote(fun)
+              unquote(block)
           end
        end
     end
@@ -123,6 +139,7 @@ defmodule Mazurka.Resource.Utils.Scope do
       |> scope_splice(:affordance)
 
     quote do
+      alias Mazurka.Resource.Utils.Scope, as: MSC
       defp __mazurka_affordance_scope_check__(
              unquote(Utils.mediatype()),
              unquote_splicing(Utils.arguments())
@@ -173,24 +190,26 @@ defmodule Mazurka.Resource.Utils.Scope do
           # inputs and params take an argument
           _ when type in [:input, :param] ->
 
-            # specifically validation blocks in the affordance are never run
-            if val_type == :validation and scope_type == :affordance do
-              # since the block is never run, we should use the default if there is one
-              if default != :__mazurka_unspecified do
-                quote do
-                  {:ok, unquote(default)}
-                end
-              end
-            else
-              apply_argument(var_type, block, default, name, type, val_type)
-          end
-          # let blocks should just be executed
-          _ -> block
+            variable = Macro.unique_var(:val, nil)
+            {apply, exec} = apply_func(block, variable, name, type, val_type)
+            block = fetch_var(var_type, variable, exec, default, name)
+            block = fetch_option(option_fields, variable, exec, block)
+            quote do
+              unquote_splicing([apply, block])
+            end
+          _ ->
+            # let blocks should just be executed
+            variable = Macro.unique_var(:val, nil)
+            {apply, exec} = apply_func(block, variable, name, type, val_type)
+            block = fetch_option(option_fields, variable, exec, block)
+            quote do
+              unquote_splicing([apply, block])
+            end
+
         end
 
       # if an option was passed in and this field accepts it, just replace the block with it
       # entirely
-      block = fetch_option(option_fields, block)
 
       run_block =
         cond do
@@ -245,7 +264,7 @@ defmodule Mazurka.Resource.Utils.Scope do
             # condition or validation with no error block, eg. `condition foo != bar`
             quote do
               if !unquote(block) do
-                {{unquote(val_type), "unknown_error"}, nil}
+                {{unquote(val_type), unquote(block |> Macro.to_string())}, nil}
               else
                 {mazurka_error__, nil}
               end
@@ -264,6 +283,7 @@ defmodule Mazurka.Resource.Utils.Scope do
         _ = unquote(var)
       end
     end)
+
     quote do
       unquote_splicing(res)
     end

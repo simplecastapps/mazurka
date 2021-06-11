@@ -164,7 +164,7 @@ defmodule Test.Mazurka.Resource.MoreValidation do
     }
 
     "affordance" ->
-    {body, _} = Foo.affordance([], %{"param1" => 2, "param2" => 3}, %{"input1" => "1"}, %{}, Router)
+    {body, _} = Foo.affordance([], %{"param1" => 2, "param2" => 3}, %{"input1" => 1}, %{}, Router)
 
     assert body == %{"param1" => 4, "href" => "/param1/2?input1=1"}
 
