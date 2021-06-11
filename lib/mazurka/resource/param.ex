@@ -308,4 +308,8 @@ defmodule Mazurka.Resource.Param do
       end
     end
   end
+
+  defmacro all_unaltered() do
+    Utils.params()
+  end
 end
