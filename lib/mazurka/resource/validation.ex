@@ -26,8 +26,7 @@ defmodule Mazurka.Resource.Validation do
       end
 
   Or for short validations, you can spell it out, if you really want to.
-    validation 1 != 2, on_error: "error message"
-
+     validation 1 != 2, on_error: "error message"
   """
   defmacro validation(first_arg, second_arg \\ :__mazurka_unspecified) do
     module = __CALLER__.module
