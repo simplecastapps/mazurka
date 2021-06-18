@@ -282,6 +282,16 @@ defmodule Test.Mazurka.Resource.Link do
         {:ok, x}
       end
 
+      input input7, default: "input7_default", condition: fn x ->
+        {:ok, x <> "_modified"}
+      end
+
+      input input8, default: "input8_default", validation: fn x ->
+        {:ok, x <> "_modified"}
+      end
+
+
+
       mediatype Hyper do
         affordance do
           %{
@@ -291,7 +301,9 @@ defmodule Test.Mazurka.Resource.Link do
             "input3" => input3 <> "_aff",
             "input4" => input4 <> "_aff",
             "input5" => input5 <> "_aff",
-            "input6" => input6 <> "_aff"
+            "input6" => input6 <> "_aff",
+            "input7" => input7 <> "_aff",
+            "input8" => input8 <> "_aff"
           }
         end
         action do
@@ -302,7 +314,9 @@ defmodule Test.Mazurka.Resource.Link do
             "input3" => input3 <> "_action",
             "input4" => input4 <> "_action",
             "input5" => input5 <> "_action",
-            "input6" => input6 <> "_action"
+            "input6" => input6 <> "_action",
+            "input7" => input7 <> "_action",
+            "input8" => input8 <> "_action"
           }
         end
       end
@@ -314,14 +328,28 @@ defmodule Test.Mazurka.Resource.Link do
       mediatype Hyper do
         action do
           %{
-            "bar" => link_to(Foo, %{foo: "newfoo"}, %{}, nil, %{input1: "input1_alt"})
+            "bar" => link_to(Foo, %{foo: "fooparam"}, %{input7: "input7_alt", input8: "input8_alt"}, nil, %{input1: "input1_alt"})
           }
         end
       end
     end
+
+    defmodule Baz do
+      use Mazurka.Resource
+
+      mediatype Hyper do
+        action do
+          %{
+            "bar" => link_to(Foo, %{foo: "fooparam"}, %{}, nil, %{input1: "input1_alt"})
+          }
+        end
+      end
+    end
+
     router Router do
       route "GET", ["foo", :foo], Foo
       route "GET", ["bar"], Bar
+      route "GET", ["baz"], Baz
     end
 
     after
@@ -335,24 +363,49 @@ defmodule Test.Mazurka.Resource.Link do
         "input4" => "input4_default_action",
         "input5" => "input5_default_action",
         "input6" => "input6_default_action",
+        "input7" => "input7_default_action",
+        "input8" => "input8_default_action",
         "href" => "/foo/foo"
       } == res
 
-    "Bar.action" ->
+    "Bar.action (returning Foo.affordance)" ->
     {res, _, _} = Bar.action([], %{}, %{}, %{}, Router)
 
       assert %{
         "href" => "/bar",
         "bar" => %{
-          "foo" => "newfoo_aff",
+          "href" => "/foo/fooparam?input7=input7_alt&input8=input8_alt",
+          "foo" => "fooparam_aff",
           "input1" => "input1_alt_aff",
           "input2" => "input2_default_aff",
           "input3" => "input1_alt_aff",
           "input4" => "input1_alt_aff",
-          "input5" => "newfoo_aff",
+          "input5" => "fooparam_aff",
           "input6" => "input6_default_aff",
-          "href" => "/foo/newfoo"
+          # since we are passing in input7, the condition function modifies it.
+          "input7" => "input7_alt_modified_aff",
+          # we are passing it in, but validations don't get run in affordances, so
+          # we use the default
+          "input8" => "input8_default_aff"
           }
-        } == res
+      } == res
+
+    "Baz.action (returning Foo.affordance)" ->
+    {res, _, _} = Baz.action([], %{}, %{}, %{}, Router)
+      assert %{
+        "href" => "/baz",
+        "bar" => %{
+          "href" => "/foo/fooparam",
+          "foo" => "fooparam_aff",
+          "input1" => "input1_alt_aff",
+          "input2" => "input2_default_aff",
+          "input3" => "input1_alt_aff",
+          "input4" => "input1_alt_aff",
+          "input5" => "fooparam_aff",
+          "input6" => "input6_default_aff",
+          "input7" => "input7_default_aff",
+          "input8" => "input8_default_aff"
+          }
+      } == res
   end
 end

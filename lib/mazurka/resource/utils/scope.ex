@@ -126,7 +126,6 @@ defmodule Mazurka.Resource.Utils.Scope do
       |> filter_affordance_relevant()
       |> scope_binding_names()
 
-    #    variable_map = scope_assignments
     action_scope_splice =
       Module.get_attribute(env.module, :mazurka_scope)
       |> Enum.reverse()
@@ -188,6 +187,9 @@ defmodule Mazurka.Resource.Utils.Scope do
       block =
         case type do
           # inputs and params take an argument
+          _ when type in [:input, :param] and val_type == :validation and scope_type == :affordance ->
+            quote do {:ok, unquote(default)} end
+
           _ when type in [:input, :param] ->
 
             variable = Macro.unique_var(:val, nil)
