@@ -5,6 +5,8 @@ defmodule Test.Mazurka.Resource.Validation do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       validation foo != "bar"
@@ -38,6 +40,8 @@ defmodule Test.Mazurka.Resource.Validation do
   context "Several" do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       param foo
 
@@ -82,6 +86,8 @@ defmodule Test.Mazurka.Resource.Validation do
     defmodule Foo do
       use Mazurka.Resource
 
+      version 1
+
       param foo
 
       validation foo != "bar"
@@ -125,6 +131,8 @@ defmodule Test.Mazurka.Resource.Validation do
   context "Custom Message" do
     defmodule Foo do
       use Mazurka.Resource
+
+      version 1
 
       param foo
 
