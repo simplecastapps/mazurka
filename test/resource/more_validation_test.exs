@@ -88,12 +88,17 @@ defmodule Test.Mazurka.Resource.MoreValidation do
         "let4"
       end
 
+      let let5, default: "let5_default", validation: fn ->
+        {:ok, "let5"}
+      end
+
 
 
       mediatype Hyper do
         affordance do
           %{
             "param1" => param1,
+            "let5" => let5,
             # none of these exist because they involve validations
             # which don't exist in an affordance
             #
@@ -138,6 +143,7 @@ defmodule Test.Mazurka.Resource.MoreValidation do
       "let2" => 5,
       "let3" => "let3",
       "let4" => "let4",
+      "let5" => "let5",
       "all_input" => %{input1: 5, input2: 2, input3: 3},
       "all_lets" => %{
         let0: "let0",
@@ -166,7 +172,7 @@ defmodule Test.Mazurka.Resource.MoreValidation do
     "affordance" ->
     {body, _} = Foo.affordance([], %{"param1" => 2, "param2" => 3}, %{"input1" => 1}, %{}, Router)
 
-    assert body == %{"param1" => 4, "href" => "/param1/2?input1=1"}
+    assert body == %{"param1" => 4, "let5" => "let5_default", "href" => "/param1/2?input1=1"}
 
     "action with various failure conditions" ->
 

@@ -114,7 +114,7 @@ defmodule Mazurka.Resource.Input do
     Options:
     * `condition` function one or two parameters returning {:ok, val} or {:error, message}
     * `validation` same as condition, but only run in actions, not affordances
-    * `default` if the user doesn't pass in a value, validation won't be run and this will be the default
+    * `default` if the user doesn't pass in a value, or if we are in an affordance and this is a validation which won't be run and this will be used as the default.
     * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
 
 

@@ -32,6 +32,7 @@ defmodule Mazurka.Resource.Let do
   Options:
   * `condition` function with no parameters returning {:ok, val} or {:error, message}
   * `validation` same as condition, but only run in actions, not affordances
+  * `default` if this let is a validation, since that isn't run for affordances, this default will be used if it is available, and that will allow this variable to be in scope in affordances and other non validation blocks in the route.
   * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
 
   There may be at least one validation or condition but not both.
@@ -58,6 +59,16 @@ defmodule Mazurka.Resource.Let do
       _ -> []
     end
 
+    # We have to use :__maz_uns because it is perfectly valid to pass
+    # eg. `default: nil`, or `let foo = nil`
+    default =
+      opts
+      |> Keyword.fetch(:default)
+      |> case do
+        :error -> :__mazurka_unspecified
+        {:ok, v} -> v
+      end
+
     validation = fn_to_block(Keyword.get(opts, :validation, :__mazurka_unspecified))
 
     # `let foo do 1232 end` is equivalent to `let foo, condition: {:ok, 1232}`
@@ -76,7 +87,7 @@ defmodule Mazurka.Resource.Let do
       true -> {:condition, condition}
     end
 
-    Scope.define(module, nil, name, :let, val_type, block, nil, :__mazurka_unspecified, option_fields)
+    Scope.define(module, nil, name, :let, val_type, block, nil, default, option_fields)
   end
 
   # a let do with extra options, aka, for example `let foo, option: true do end`
