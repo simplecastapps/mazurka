@@ -290,7 +290,17 @@ defmodule Test.Mazurka.Resource.Link do
         {:ok, x <> "_modified"}
       end
 
+      let let1, condition: fn ->
+        {:ok, "let1_foo_condition_value"}
+      end
 
+      let let2, default: "let2_foo_default", validation: fn ->
+        {:ok, "let2_foo_validation_value"}
+      end
+
+      let let3, option: true, default: "let3_foo_default", validation: fn ->
+        {:ok, "let3_foo_validation_value"}
+      end
 
       mediatype Hyper do
         affordance do
@@ -303,7 +313,10 @@ defmodule Test.Mazurka.Resource.Link do
             "input5" => input5 <> "_aff",
             "input6" => input6 <> "_aff",
             "input7" => input7 <> "_aff",
-            "input8" => input8 <> "_aff"
+            "input8" => input8 <> "_aff",
+            "let1" => let1 <> "_aff",
+            "let2" => let2 <> "_aff",
+            "let3" => let3 <> "_aff"
           }
         end
         action do
@@ -316,7 +329,10 @@ defmodule Test.Mazurka.Resource.Link do
             "input5" => input5 <> "_action",
             "input6" => input6 <> "_action",
             "input7" => input7 <> "_action",
-            "input8" => input8 <> "_action"
+            "input8" => input8 <> "_action",
+            "let1" => let1 <> "_action",
+            "let2" => let2 <> "_action",
+            "let3" => let3 <> "_action"
           }
         end
       end
@@ -324,6 +340,15 @@ defmodule Test.Mazurka.Resource.Link do
 
     defmodule Bar do
       use Mazurka.Resource
+      let let1, option: true do
+        "let1_bar_value"
+      end
+      let let2, option: true do
+        "let2_bar_value"
+      end
+      let let3, option: true do
+        "let3_bar_value"
+      end
 
       mediatype Hyper do
         action do
@@ -365,6 +390,10 @@ defmodule Test.Mazurka.Resource.Link do
         "input6" => "input6_default_action",
         "input7" => "input7_default_action",
         "input8" => "input8_default_action",
+        "let1" => "let1_foo_condition_value_action",
+        "let2" => "let2_foo_validation_value_action",
+        "let3" => "let3_foo_validation_value_action",
+
         "href" => "/foo/foo"
       } == res
 
@@ -386,7 +415,12 @@ defmodule Test.Mazurka.Resource.Link do
           "input7" => "input7_alt_modified_aff",
           # we are passing it in, but validations don't get run in affordances, so
           # we use the default
-          "input8" => "input8_default_aff"
+          "input8" => "input8_default_aff",
+          "let1" => "let1_foo_condition_value_aff",
+          "let2" => "let2_foo_default_aff",
+          # comes from bar because of option: true
+          "let3" => "let3_bar_value_aff"
+
           }
       } == res
 
@@ -404,7 +438,10 @@ defmodule Test.Mazurka.Resource.Link do
           "input5" => "fooparam_aff",
           "input6" => "input6_default_aff",
           "input7" => "input7_default_aff",
-          "input8" => "input8_default_aff"
+          "input8" => "input8_default_aff",
+          "let1" => "let1_foo_condition_value_aff",
+          "let2" => "let2_foo_default_aff",
+          "let3" => "let3_foo_default_aff"
           }
       } == res
   end

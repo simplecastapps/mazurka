@@ -92,8 +92,6 @@ defmodule Test.Mazurka.Resource.MoreValidation do
         {:ok, "let5"}
       end
 
-
-
       mediatype Hyper do
         affordance do
           %{
@@ -118,6 +116,7 @@ defmodule Test.Mazurka.Resource.MoreValidation do
             "let2" => let2,
             "let3" => let3,
             "let4" => let4,
+            "let5" => let5,
             "all_input" => Input.all(),
             "all_lets" => Mazurka.Resource.Let.all(),
             "all_bindings" => Mazurka.Resource.Option.all_bindings()
@@ -151,6 +150,7 @@ defmodule Test.Mazurka.Resource.MoreValidation do
         let2: 5,
         let3: "let3",
         let4: "let4",
+        let5: "let5",
         input5: "input5"
       },
       "all_bindings" => %{
@@ -165,7 +165,8 @@ defmodule Test.Mazurka.Resource.MoreValidation do
         let1: 4,
         let2: 5,
         let3: "let3",
-        let4: "let4"
+        let4: "let4",
+        let5: "let5"
       }
     }
 
@@ -191,7 +192,6 @@ defmodule Test.Mazurka.Resource.MoreValidation do
     assert Foo.params(:binary) |> Enum.sort == ["param1", "param2"] |> Enum.sort
     assert Foo.inputs() |> Enum.sort == [:input1, :input2, :input3, :input4, :input5, :let4] |> Enum.sort
     assert Foo.inputs(:binary) |> Enum.sort == ["input1", "input2", "input3", "input4", "input5", "let4"] |> Enum.sort
-
 
     #     "affordance" ->
     #       assert {_, _} = Foo.affordance([], %{"param1" => "param1"}, %{}, %{}, Router)

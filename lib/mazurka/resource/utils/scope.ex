@@ -182,16 +182,20 @@ defmodule Mazurka.Resource.Utils.Scope do
             nil
         end
 
-      original_block = block
-
       block =
         case type do
           # inputs and params take an argument
-          _ when type in [:input, :param] and val_type == :validation and scope_type == :affordance ->
-            quote do {:ok, unquote(default)} end
+          _ when val_type == :validation and scope_type == :affordance ->
+            # affordances don't execute validations, so if there is a default,
+            # use it, unless there is an option, in which case use that.
+            variable = Macro.unique_var(:val, nil)
+            block = quote do {:ok, unquote(default)} end
+            exec = quote do {:ok, unquote(variable)} end
+            fetch_option(option_fields, variable, exec, block)
 
           _ when type in [:input, :param] ->
 
+            # inputs and params blocks take an argument, so we have to apply it.
             variable = Macro.unique_var(:val, nil)
             {apply, exec} = apply_func(block, variable, name, type, val_type)
             block = fetch_var(var_type, variable, exec, default, name)
@@ -202,12 +206,8 @@ defmodule Mazurka.Resource.Utils.Scope do
           _ ->
             # let blocks should just be executed
             variable = Macro.unique_var(:val, nil)
-            {apply, exec} = apply_func(block, variable, name, type, val_type)
-            block = fetch_option(option_fields, variable, exec, block)
-            quote do
-              unquote_splicing([apply, block])
-            end
-
+            exec = quote do {:ok, unquote(variable)} end
+            fetch_option(option_fields, variable, exec, block)
         end
 
       # if an option was passed in and this field accepts it, just replace the block with it
@@ -223,7 +223,7 @@ defmodule Mazurka.Resource.Utils.Scope do
 
           # block that sets a variable on success. `input x  fn x -> {:ok, val} end`
           name && block && !error_block ->
-            case original_block do
+            case block do
               # Prevent match warnings if returning plain {:ok, ...} or {:error, ...}
               {:ok, code} ->
                 quote do
