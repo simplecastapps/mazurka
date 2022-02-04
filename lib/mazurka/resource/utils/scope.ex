@@ -41,15 +41,15 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-  defp fetch_option(option_fields, variable, apply, block) do
+  defp fetch_option(option_fields, variable, on_success, on_error) do
     case option_fields || [] do
-      [] -> block
+      [] -> on_error
       [field] ->
         quote do
           case Map.fetch(unquote(Utils.opts()), unquote(field)) do
-            :error -> unquote(block)
+            :error -> unquote(on_error)
             {:ok, unquote(variable)} ->
-              unquote(apply)
+              unquote(on_success)
           end
         end
       option_fields ->
@@ -61,9 +61,9 @@ defmodule Mazurka.Resource.Utils.Scope do
             end
           end) |> case do
             {:ok, unquote(variable)} ->
-              unquote(apply)
+              unquote(on_success)
             :not_found ->
-              unquote(block)
+              unquote(on_error)
           end
        end
     end
@@ -179,9 +179,9 @@ defmodule Mazurka.Resource.Utils.Scope do
             # affordances don't execute validations, so if there is a default,
             # use it, unless there is an option, in which case use that.
             variable = Macro.unique_var(:val, nil)
-            block = quote do {:ok, unquote(default)} end
-            exec = quote do {:ok, unquote(variable)} end
-            fetch_option(option_fields, variable, exec, block)
+            not_found = quote do {:ok, unquote(default)} end      # no such option, use default
+            found = quote do {:ok, unquote(variable)} end         # found option, use it
+            fetch_option(option_fields, variable, found, not_found)
 
           _ when type in [:input, :param] ->
 
@@ -192,10 +192,10 @@ defmodule Mazurka.Resource.Utils.Scope do
             block = fetch_option(option_fields, variable, exec, block)
             quote do unquote(block) end
           _ ->
-            # let blocks should just be executed
+            # let blocks should just be executed, unless an option applies
             variable = Macro.unique_var(:val, nil)
-            exec = quote do {:ok, unquote(variable)} end
-            fetch_option(option_fields, variable, exec, block)
+            found = quote do {:ok, unquote(variable)} end       # we found an option, use it
+            fetch_option(option_fields, variable, found, block)
         end
 
       # if an option was passed in and this field accepts it, just replace the block with it
