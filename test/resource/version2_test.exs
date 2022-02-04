@@ -45,6 +45,26 @@ defmodule Test.Mazurka.Resource.Version2 do
       let foo3, option: true do
       end
 
+      input hidden_input, validation: fn x, _opts ->
+        {:ok, x}
+      end
+
+      input input6,
+      required: fn opts -> "required_message_#{opts[:var_type]}_#{opts[:field_name]}_#{opts[:validation_type]}" end,
+        validation: fn x, _opts ->
+          {:ok, x}
+        end
+
+      input input7, validation: fn x, _opts ->
+        {:ok, input6 <> x}
+      end
+
+      input input8,
+        required: fn opts -> "required_message_#{opts[:var_type]}_#{opts[:field_name]}_#{opts[:validation_type]}" end,
+        condition: fn x, _opts ->
+          {:ok, x}
+        end
+
 
       mediatype Hyper do
         action do
@@ -63,6 +83,28 @@ defmodule Test.Mazurka.Resource.Version2 do
 
   after
     "action" ->
-    {_body, _, _} = Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3}, %{})
+    {_body, _, _} = Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3, "input6" => "input6", "input8" => "input8"}, %{})
+
+      try do
+        {_body, _, _} = Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3}, %{})
+      rescue
+        e in [Mazurka.ValidationException] ->
+          assert e.message == "required_message_input_input6_validation"
+      end
+
+      try do
+        {_body, _, _} = Foo.action([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3, "input6" => "input6"}, %{})
+      rescue
+        e in [Mazurka.ConditionException] ->
+          assert e.message == "required_message_input_input8_condition"
+      end
+
+      {%{"href" => _}, _} = Foo.affordance([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3, "input6" => "input6", "input8" => "input8"}, %{}, Router)
+
+      # undefined because input8 is required and a condition but not supplied
+      {%Mazurka.Affordance.Undefined{}, _} = Foo.affordance([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3, "input6" => "input6"}, %{}, Router)
+
+      # okay because even though input6 is required, it is not necessary for affordances
+      {%{"href" => _}, _} = Foo.affordance([], %{"param1" => 2}, %{"input1" => 1, "input5" => "input5!", "input3" => 3, "input8" => "input8"}, %{}, Router)
   end
 end

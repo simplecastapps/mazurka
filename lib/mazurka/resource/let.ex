@@ -66,7 +66,7 @@ defmodule Mazurka.Resource.Let do
       |> Keyword.fetch(:default)
       |> case do
         :error -> :__mazurka_unspecified
-        {:ok, v} -> v
+        {:ok, v} -> {:default, v}
       end
 
     validation = fn_to_block(Keyword.get(opts, :validation, :__mazurka_unspecified))

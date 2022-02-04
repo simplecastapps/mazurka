@@ -12,6 +12,19 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
+  def eval_default(default, required, var_name, var_type, val_type) do
+    cond do
+      default != :__mazurka_unspecified -> quote do {:ok, unquote(default)} end
+
+      required != :__mazurka_unspecified -> quote do
+        {:error, ((unquote(required)).(field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type)))}
+      end
+
+      true -> quote do {:ok, :__mazurka_unspecified} end
+    end
+  end
+
+  # used for input / param validations, aka fn x, opts -> ... end
   def apply(f, val, opts) do
     case Function.info(f, :arity) do
       # backwards compatibility, input foo, fn x -> ... end
@@ -22,19 +35,12 @@ defmodule Mazurka.Resource.Utils.Scope do
     end
   end
 
-
-  defp apply_func(f, variable, var_name, var_type, val_type) do
-    quote do
-      (MSC.apply(unquote(f), unquote(variable), field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type)))
-    end
-  end
-
-  def fetch_var(var, variable, apply, default, var_name) do
+  def fetch_var(var, var_name, variable, apply, on_error) do
     quote do
       case Map.fetch(unquote(var), unquote(var_name)) do
         # If var is not fetchable and default is ever :__mazurka_unspecified
         # then that is a serious bug.
-        :error -> {:ok, unquote(default)}
+        :error -> unquote(on_error)
           # function has to return either {:ok, _} or {:error, _}
         {:ok, unquote(variable)} -> unquote(apply)
       end
@@ -78,7 +84,7 @@ defmodule Mazurka.Resource.Utils.Scope do
   #       - returns {:ok, val} or {:error, message} or true or false depending on new or old
   #         style validation / condition
   # error_block - optional for error blocks in old style conditions and validations
-  def define(module, var, name, type, val_type, block, error_block, default, option_fields) do
+  def define(module, var, name, type, val_type, block, error_block, default_or_required, option_fields) do
     # due to compilation timing issues, we can't guarantee a call to this
     # will happen before other modules will start calling define.
     if !Module.has_attribute?(module, :mazurka_scope) do
@@ -97,8 +103,8 @@ defmodule Mazurka.Resource.Utils.Scope do
         block,
         # error block of code, if any
         error_block,
-        # default value, if any
-        default,
+        # if input is not supplied, default value or an error block
+        default_or_required,
         # option_fields to draw a default value from, if any
         option_fields
       })
@@ -157,12 +163,19 @@ defmodule Mazurka.Resource.Utils.Scope do
 
   defp scope_splice(scope, scope_type) when scope_type in [:action, :affordance] do
     res = scope
-    |> Enum.map(fn {var_type, name, type, val_type, block, error_block, default, option_fields}->
+    |> Enum.map(fn {var_type, name, type, val_type, block, error_block, default_or_required, option_fields} ->
+
+      {default, required} = default_or_required |> case do
+        {:default, d} -> {d, :__mazurka_unspecified}
+        {:required, r} -> {:__mazurka_unspecified, r}
+        _ -> {:__mazurka_unspecified, :__mazurka_unspecified}
+      end
+
       var =
         cond do
           # inputs are optional, and if there is no default value, their binding should be hidden from use
           # as a variable in any inputs, params, lets, or blocks because they may not have a defined value.
-          name && type == :input && default == :__mazurka_unspecified ->
+          name && type == :input && default == :__mazurka_unspecified && required == :__mazurka_unspecified ->
             Utils.hidden_var(name)
 
           name ->
@@ -179,17 +192,21 @@ defmodule Mazurka.Resource.Utils.Scope do
             # affordances don't execute validations, so if there is a default,
             # use it, unless there is an option, in which case use that.
             variable = Macro.unique_var(:val, nil)
-            not_found = quote do {:ok, unquote(default)} end      # no such option, use default
-            found = quote do {:ok, unquote(variable)} end         # found option, use it
+            # defaults can be evaluated on the validation affordance level, but required can never can be
+            default = eval_default(default, :__mazurka_unspecified, name, type, val_type)
+            not_found = quote do unquote(default) end
+            found = quote do {:ok, unquote(variable)} end
             fetch_option(option_fields, variable, found, not_found)
 
           _ when type in [:input, :param] ->
 
             # inputs and params blocks take an argument, so we have to apply it.
             variable = Macro.unique_var(:val, nil)
-            exec = apply_func(block, variable, name, type, val_type)
-            block = fetch_var(var_type, variable, exec, default, name)
-            block = fetch_option(option_fields, variable, exec, block)
+            default = eval_default(default, required, name, type, val_type)     #  {:ok, _} | {:error, _}
+
+            apply = quote do MSC.apply(unquote(block), unquote(variable), field_name: unquote(name), var_type: unquote(type), validation_type: unquote(val_type)) end
+            block = fetch_var(var_type, name, variable, apply, default)         # Map.fetch!(INPUT, variable) |> case do {:ok, apply}; {:error, default} end
+            block = fetch_option(option_fields, variable, apply, block)         # Map.fetch!(OPTION, variable) |> case do {:ok, apply}; {:error, block}
             quote do unquote(block) end
           _ ->
             # let blocks should just be executed, unless an option applies
@@ -272,6 +289,7 @@ defmodule Mazurka.Resource.Utils.Scope do
           end
         _ = unquote(var)
       end
+
     end)
 
     quote do
@@ -330,8 +348,8 @@ defmodule Mazurka.Resource.Utils.Scope do
     scope
     |> filter_by_bindings()
     |> Enum.map(fn
-      {_var, name, type, _, _, _, default, _} ->
-        if type == :input && default == :__mazurka_unspecified do
+      {_var, name, type, _, _, _, default_or_required, _} ->
+        if type == :input && default_or_required == :__mazurka_unspecified do
           Utils.hidden_var(name)
         else
           Macro.var(name, nil)

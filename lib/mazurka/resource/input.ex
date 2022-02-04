@@ -192,6 +192,14 @@ defmodule Mazurka.Resource.Input do
         {:ok, v} -> v
       end
 
+    required =
+      opts
+      |> Keyword.fetch(:required)
+      |> case do
+        :error -> :__mazurka_unspecified
+        {:ok, v} -> v
+      end
+
     validation = Keyword.get(opts, :validation, :__mazurka_unspecified)
     condition = Keyword.get(opts, :condition, :__mazurka_unspecified)
 
@@ -203,6 +211,9 @@ defmodule Mazurka.Resource.Input do
         validation == :__mazurka_unspecified && condition == :__mazurka_unspecified ->
           raise "You must specify at least one of a validation or condition in the input #{name}"
 
+        default != :__mazurka_unspecified && required != :__mazurka_unspecified ->
+          raise "You cannot specify both required and default in the input #{name}"
+
         validation != :__mazurka_unspecified ->
           {:validation, validation}
 
@@ -212,6 +223,12 @@ defmodule Mazurka.Resource.Input do
 
     Module.put_attribute(module, :mazurka_inputs, name)
 
+    default_or_required = case {default, required} do
+      {:__mazurka_unspecified, :__mazurka_unspecified} -> :__mazurka_unspecified
+      {:__mazurka_unspecified, required} -> {:required, required}
+      {default,:__mazurka_unspecified} -> {:default, default}
+    end
+
     Scope.define(
       module,
       Utils.input(),
@@ -220,7 +237,7 @@ defmodule Mazurka.Resource.Input do
       val_type,
       block,
       nil,
-      default,
+      default_or_required,
       option_fields
     )
   end
@@ -260,8 +277,8 @@ defmodule Mazurka.Resource.Input do
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
       |> Mazurka.Resource.Utils.Scope.filter_by_inputs()
-      |> Enum.map(fn {_var, name, :input, _, _, _, default, _} ->
-        if default == :__mazurka_unspecified do
+      |> Enum.map(fn {_var, name, :input, _val_type, _, _, default_or_required, _} ->
+        if default_or_required == :__mazurka_unspecified do
           {name, Utils.hidden_var(name)}
         else
           {name, Macro.var(name, nil)}

@@ -34,7 +34,7 @@ defmodule Test.Mazurka.Resource.Validation do
       assert {_, _} = Foo.affordance([], %{"foo" => "foo"}, %{}, %{}, Router)
 
     "affordance validation success" ->
-      assert {_, _} = Foo.affordance([], %{"foo" => "bar"}, %{}, %{}, Router)
+    assert {_, _} = Foo.affordance([], %{"foo" => "bar"}, %{}, %{}, Router)
   end
 
   context "Several" do
