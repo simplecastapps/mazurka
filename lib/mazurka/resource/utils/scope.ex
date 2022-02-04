@@ -24,19 +24,9 @@ defmodule Mazurka.Resource.Utils.Scope do
 
 
   defp apply_func(f, variable, var_name, var_type, val_type) do
-    applyvar = Macro.unique_var(:apply, nil)
-    fvar = Macro.unique_var(:f, nil)
-    function = quote do
-      unquote(applyvar) = fn unquote(variable) ->
-        unquote(fvar) = unquote(f)
-        MSC.apply(unquote(fvar), unquote(variable), field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type))
-      end
+    quote do
+      (MSC.apply(unquote(f), unquote(variable), field_name: unquote(var_name), var_type: unquote(var_type), validation_type: unquote(val_type)))
     end
-
-    exec = quote do
-      unquote(applyvar).(unquote(variable))
-    end
-    {function, exec}
   end
 
   def fetch_var(var, variable, apply, default, var_name) do
@@ -197,12 +187,10 @@ defmodule Mazurka.Resource.Utils.Scope do
 
             # inputs and params blocks take an argument, so we have to apply it.
             variable = Macro.unique_var(:val, nil)
-            {apply, exec} = apply_func(block, variable, name, type, val_type)
+            exec = apply_func(block, variable, name, type, val_type)
             block = fetch_var(var_type, variable, exec, default, name)
             block = fetch_option(option_fields, variable, exec, block)
-            quote do
-              unquote_splicing([apply, block])
-            end
+            quote do unquote(block) end
           _ ->
             # let blocks should just be executed
             variable = Macro.unique_var(:val, nil)
