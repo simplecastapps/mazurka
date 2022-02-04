@@ -111,10 +111,19 @@ defmodule Mazurka.Resource.Input do
           {:ok, x |> to_string()}
         end
 
+        input bar, option: true,
+          required: fn opts -> "\#{opts[:var_type]} \#{opts[:field_name]} is required",
+          validation: fn x ->
+            {:ok, x |> to_string()}
+          end
+
+
+
     Options:
     * `condition` function one or two parameters returning {:ok, val} or {:error, message}
     * `validation` same as condition, but only run in actions, not affordances
     * `default` if the user doesn't pass in a value, or if we are in an affordance and this is a validation which won't be run and this will be used as the default.
+    * `required` if the user doesn't pass in a value and one is required at this level, run this function with information about the input as an error message.
     * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
 
 
