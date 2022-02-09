@@ -166,8 +166,9 @@ defmodule Mazurka.Resource.Utils.Scope do
   # C: condition V: validation
   # r: required  d: default
   #
-  # H: FROM variable should unusable in (aka HIDDEN from) TO block
-  # U: Any hidden variables should be brought into scope for this case
+  # H: FROM variable should unusable in (aka HIDDEN from) TO block by default
+  # F: filter out variable entirely as it is irrelevant (to an affordance)
+  # U: Any previously hidden variables should be brought into scope for this case
   #
   # example:
   #   PC -> param foo1, condition: ...
@@ -177,35 +178,28 @@ defmodule Mazurka.Resource.Utils.Scope do
   #   IV -> input foo5, validation: inspect(foo4) # <- error referencing optional input with no default or required
   #   IV -> input foo6, validation: inspect(foo1) # <- fine, foo2 is a param so it is always there
   #
-  #                     FROM
-  #           condition               validation
+  #                          FROM
+  #              condition               validation
   #          PC IC ICd ICr LC        IV IVd IVr  LV  LVd
-  # T     C    H                     H      H   H
-  # O
-  #       V    H                     H      HU  HU
-  #
-  #  should be hidden if
+  #       C     H                    H      H    H
+  # T     V     H                    H      HU   HU
+  # O     AFF                        HF     HF   HF
+  #       ACT                        H      HU   HU
+
+  #  should be hidden by default if
   #    HIDDEN == FROM((IC && !d && !r) || (V && !d)) (anything that might not be globally applicable due to optionality)
   #
-  #  hidden variables should be brought into scope if
-  #    UNHIDDEN == TO:V && FROM:(V && (r || L)) (if it is required and on validation level, it should be available in validation level blocks)
+  #  hidden variables should be brought into scope for validations if
+  #    VAL_UNHIDDEN == TO:V && FROM:(V && (r || L)) (if it is required and on validation level, it should be available in validation level blocks)
   #
-  #
-  #  F: filter out (in filter_affordance_relevant)
-  #  U: unhide (in scope_binding_names)
-  #                     FROM
-  #           condition              validation
-  #          PC IC ICd ICr LC       IV IVd IVr LV  LVd
-  #
-  #      AFF                        F      F    F
-  #
-  #      ACT                               U    U
+  #  variables should be entirely filtered out of affordances if
+  #    AFFORD_FILTER = FROM(V && !d)
   #
   #  hidden variables should be unhidden from affordance if
-  #    AFFORD == never
+  #    AFFORD_UNHIDDEN == never
   #
-  #  hidden variables should be unhidden for action if
-  #    ACTION == IVr || LV (params are required, and we know it has been validated) (inputs that are required must have been validated)
+  #  hidden variables should be unhidden for action if (same as VAL_UNHIDDEN, but TO:V is implied by action
+  #    ACTION_UNHIDDEN == FROM:(V && (r || L)) (params are required, and we know it has been validated) (inputs that are required must have been validated)
 
   # TODO remove Param Validation, it makes no sense and is likely a bug
   defp scope_splice(scope, scope_type) when scope_type in [:action, :affordance] do
@@ -265,7 +259,7 @@ defmodule Mazurka.Resource.Utils.Scope do
         end
 
       hvars =
-        # UNHIDDEN == TO:V && FROM:(V && (r || L))
+        # VAL_UNHIDDEN == TO:V && FROM:(V && (r || L))
         case val_type == :validation && hidden_val_vars || [] do
           [] -> quote do end
           _ ->
@@ -504,7 +498,7 @@ defmodule Mazurka.Resource.Utils.Scope do
     {_var, _name, type, val_type, _, _, default_or_required, _} = scope
     hidden = scope |> scope_is_hidden()
 
-    # UNHIDDEN ACTION == IVr || LV
+    # ACTION_UNHIDDEN == IVr || LV
     is_required = default_or_required |> case do
       {:required, _} -> true
       _ -> false
@@ -538,6 +532,7 @@ defmodule Mazurka.Resource.Utils.Scope do
       _ -> false
     end
 
+    # AFFORD_FILTER = FROM(V && !d) aka AFFORD_INCLUDE (C || (V && d))
     val_type == :condition || (val_type == :validation && has_default)
   end
 
