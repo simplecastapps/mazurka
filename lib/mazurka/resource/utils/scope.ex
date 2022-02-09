@@ -179,12 +179,10 @@ defmodule Mazurka.Resource.Utils.Scope do
   #
   #                     FROM
   #           condition               validation
-  #          PC IC ICd ICr LC       PV IV IVd IVr  LV  LVd
-  #       PC    H                    H  H      H   H
-  # T     IC    H                    H  H      H   H
+  #          PC IC ICd ICr LC        IV IVd IVr  LV  LVd
+  # T     C    H                     H      H   H
   # O
-  #       PV    H                    HU H      HU  HU
-  #       IV    H                    HU H      HU  HU
+  #       V    H                     H      HU  HU
   #
   #  should be hidden if
   #    HIDDEN == FROM((IC && !d && !r) || (V && !d)) (anything that might not be globally applicable due to optionality)
@@ -197,17 +195,17 @@ defmodule Mazurka.Resource.Utils.Scope do
   #  U: unhide (in scope_binding_names)
   #                     FROM
   #           condition              validation
-  #          PC IC ICd ICr LC       PV IV IVd IVr LV  LVd
+  #          PC IC ICd ICr LC       IV IVd IVr LV  LVd
   #
-  #      AFF                        F  F      F    F
+  #      AFF                        F      F    F
   #
-  #      ACT                        U         U    U
+  #      ACT                               U    U
   #
   #  hidden variables should be unhidden from affordance if
   #    AFFORD == never
   #
   #  hidden variables should be unhidden for action if
-  #    ACTION == PV || IVr || LV (params are required, and we know it has been validated) (inputs that are required must have been validated)
+  #    ACTION == IVr || LV (params are required, and we know it has been validated) (inputs that are required must have been validated)
 
   # TODO remove Param Validation, it makes no sense and is likely a bug
   defp scope_splice(scope, scope_type) when scope_type in [:action, :affordance] do
@@ -266,8 +264,27 @@ defmodule Mazurka.Resource.Utils.Scope do
             fetch_option(option_fields, variable, found, block)
         end
 
-      # if an option was passed in and this field accepts it, just replace the block with it
-      # entirely
+      hvars =
+        # UNHIDDEN == TO:V && FROM:(V && (r || L))
+        case val_type == :validation && hidden_val_vars || [] do
+          [] -> quote do end
+          _ ->
+          #FROM:(V && (r || L))
+          hidden_val_vars = hidden_val_vars |> Enum.filter(fn {_name, type, val_type, _default, required} ->
+            (val_type == :validation && (required != :__mazurka_unspecified || type == :let))
+            end)
+
+            vars = hidden_val_vars |> Enum.map(fn {name, _, _, _, _} ->
+              quote do unquote(Macro.var(name, nil)) = unquote(Utils.hidden_var(name)) end
+            end)
+            var_assigns = hidden_val_vars |> Enum.map(fn {name, _, _, _, _} ->
+              quote do _ = unquote(Macro.var(name, nil)) end
+            end)
+            quote do
+              unquote_splicing(vars)
+              unquote_splicing(var_assigns)
+            end
+        end
 
       run_block =
         cond do
@@ -280,27 +297,6 @@ defmodule Mazurka.Resource.Utils.Scope do
           # block that sets a variable on success. `input x  fn x -> {:ok, val} end`
           name && block && !error_block ->
 
-          hvars =
-            # UNHIDDEN == TO:V && FROM:(V && (r || L))
-            case val_type == :validation && hidden_val_vars || [] do
-              [] -> quote do end
-              _ ->
-              #FROM:(V && r)
-              hidden_val_vars = hidden_val_vars |> Enum.filter(fn {_name, type, val_type, _default, required} ->
-                (val_type == :validation && (required != :__mazurka_unspecified || type == :let))
-                end)
-
-                vars = hidden_val_vars |> Enum.map(fn {name, _, _, _, _} ->
-                  quote do unquote(Macro.var(name, nil)) = unquote(Utils.hidden_var(name)) end
-                end)
-                var_assigns = hidden_val_vars |> Enum.map(fn {name, _, _, _, _} ->
-                  quote do _ = unquote(Macro.var(name, nil)) end
-                end)
-                quote do
-                  unquote_splicing(vars)
-                  unquote_splicing(var_assigns)
-                end
-            end
 
             case block do
               # Prevent match warnings if returning plain {:ok, ...} or {:error, ...}
@@ -334,6 +330,7 @@ defmodule Mazurka.Resource.Utils.Scope do
           # block and error block, eg. `condition current_actor, Error.unauthenticated()`
           error_block != :__mazurka_unspecified ->
             quote do
+              unquote(hvars)
               if unquote(block) do
                 {mazurka_error__, nil}
               else
@@ -346,6 +343,7 @@ defmodule Mazurka.Resource.Utils.Scope do
           true ->
             # condition or validation with no error block, eg. `condition foo != bar`
             quote do
+              unquote(hvars)
               if !unquote(block) do
                 {{unquote(val_type), unquote(block |> Macro.to_string())}, nil}
               else
@@ -506,7 +504,7 @@ defmodule Mazurka.Resource.Utils.Scope do
     {_var, _name, type, val_type, _, _, default_or_required, _} = scope
     hidden = scope |> scope_is_hidden()
 
-    # UNHIDDEN ACTION == PV || IVr || LV
+    # UNHIDDEN ACTION == IVr || LV
     is_required = default_or_required |> case do
       {:required, _} -> true
       _ -> false

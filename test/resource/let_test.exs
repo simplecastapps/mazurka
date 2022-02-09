@@ -44,6 +44,12 @@ defmodule Test.Mazurka.Resource.Let do
         foo == "foo"
       end
 
+      let letval, validation: fn ->
+        {:ok, 123}
+      end
+
+      validation letval, "error"
+
       # would fail to compile, accessing validation from condition code
       # condition bar == "bar", "asdf"
 
