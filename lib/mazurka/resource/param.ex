@@ -52,7 +52,7 @@ defmodule Mazurka.Resource.Param do
   @doc """
   Define an expected input for the resource
 
-      param address, validation: fn value ->
+      param address, condition: fn value ->
         case value |> parse_address() do
           %Address{} = addr -> {:ok, addr}
           {:error, reason} -> {:error, "Could not parse address because \#{reason}"}
@@ -60,7 +60,7 @@ defmodule Mazurka.Resource.Param do
         end
       end
 
-    Your validation function may optionally take up to two arguments.
+    Your condition function may optionally take up to two arguments.
 
     * the value passed in by the user
     * a set of options in which `:var_type` could be `:input` or `:param` and `:field_name` will be the name of the variable you are validating (in this case :address)
@@ -68,34 +68,29 @@ defmodule Mazurka.Resource.Param do
     Those options can be used to make more relevant error messages.
 
 
-      param address, validation: fn x, field_name, param_type ->
+      param address, condition: fn x, field_name, param_type ->
         :address = field_name
         :param = param_type
         value ->
         case value |> parse_address() do
           %Address{} = addr -> {:ok, addr}
           _ ->
-            # "validation: Could not parse input address"
+            # "condition: Could not parse input address"
             msg = "\#{validation_type}: Could not parse \#{param_type} address"
             {:error, msg}
         end
       end
 
-      param foo, option: true, default: "foo", validation: fn x ->
+      param foo, option: true, default: "foo", condition: fn x ->
         {:ok, x |> to_string()}
       end
 
     Options:
     * `condition` function with between 1 and 3 params returning {:ok, val} or {:error, message}
-    * `validation` same as condition, but only run in actions, not affordances
 
-    * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with user passed in value.
+    * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do condition as normal with user passed in value.
 
-
-    Since it is a param, it will always be brought into scope, but to be accessible as a variable
-    its condition or validation must have run.
-
-    There must be at least one validation or condition but not both. If the variable is validated, then it will not be brought into scope in affordances or in any other let / param / input condition code. This is to prevent referencing an unvalidated variable in a context where validation did not occur. 
+    Since it is a param, it will always be brought into scope and its condition will always be run, no matter what.
   """
   defmacro param(w, opts \\ []) do
     module = __CALLER__.module
@@ -157,21 +152,12 @@ defmodule Mazurka.Resource.Param do
         {:ok, v} -> v
       end
 
-    validation = Keyword.get(opts, :validation, :__mazurka_unspecified)
     condition = Keyword.get(opts, :condition, :__mazurka_unspecified)
 
     {val_type, block} =
-      cond do
-        validation != :__mazurka_unspecified && condition != :__mazurka_unspecified ->
-          raise "You can't specify both a validation and condition block in input #{name}"
-
-        validation == :__mazurka_unspecified && condition == :__mazurka_unspecified ->
-          raise "You must specify at least one of a validation or condition in the param #{name}"
-
-        validation != :__mazurka_unspecified ->
-          {:validation, validation}
-
-        true ->
+      if condition == :__mazurka_unspecified do
+          raise "You must specify a condition in the param #{name}"
+      else
           {:condition, condition}
       end
 
