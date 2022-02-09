@@ -86,7 +86,7 @@ defmodule Mazurka.Resource.Param do
       end
 
     Options:
-    * `condition` function with between 1 and 3 params returning {:ok, val} or {:error, message}
+    * `condition` function with between one and two params returning {:ok, val} or {:error, message}
 
     * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do condition as normal with user passed in value.
 
