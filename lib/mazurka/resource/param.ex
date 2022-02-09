@@ -293,10 +293,10 @@ defmodule Mazurka.Resource.Param do
       __CALLER__.module
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
-      |> Mazurka.Resource.Utils.Scope.filter_by_params()
-      |> Enum.map(fn {_var, name, :param, _, _, _, _default, _} ->
-          {name, Macro.var(name, nil)}
-      end)
+      |> Mazurka.Resource.Utils.Scope.scope_filter_by(params: true)
+      |> Mazurka.Resource.Utils.Scope.scope_as_name_binding_list(&Mazurka.Resource.Utils.Scope.scope_is_hidden/1)
+      |> Map.new()
+      |> Enum.to_list()
 
     if type == :atom do
       quote do

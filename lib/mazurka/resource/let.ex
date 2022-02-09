@@ -133,20 +133,10 @@ defmodule Mazurka.Resource.Let do
       __CALLER__.module
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
-      |> Mazurka.Resource.Utils.Scope.filter_by_lets()
-      |> Enum.map(fn
-        {_var, name, :input, _, _, _, default, _} ->
-          if default == :__mazurka_unspecified do
-            []
-          else
-            [{name, Macro.var(name, nil)}]
-          end
-          {_var, name, _, _, _, _, _default, _} -> [{name, Macro.var(name, nil)}]
-      end)
-      |> Enum.concat()
-     # Enum.uniq_by first duplicate key is winner, we want last.
-     |> Map.new()
-     |> Enum.to_list()
+      |> Mazurka.Resource.Utils.Scope.scope_filter_by(lets: true)
+      |> Mazurka.Resource.Utils.Scope.scope_as_name_binding_list(&Mazurka.Resource.Utils.Scope.scope_is_hidden/1)
+      |> Map.new()
+      |> Enum.to_list()
 
     if type == :atom do
       quote do

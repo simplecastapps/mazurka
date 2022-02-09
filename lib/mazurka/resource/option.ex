@@ -71,8 +71,6 @@ defmodule Mazurka.Resource.Option do
         end)
         |> Enum.map(fn {k, {_, v}} -> {k |> to_string(), v} end) |> Map.new()
       end
-
-      all_options = all_options |> Enum.map(fn {k, v} -> {to_string(k), v} end)
     end
   end
 
@@ -83,18 +81,8 @@ defmodule Mazurka.Resource.Option do
       __CALLER__.module
       |> Module.get_attribute(:mazurka_scope)
       |> Enum.reverse()
-      |> Mazurka.Resource.Utils.Scope.filter_by_bindings()
-      |> Enum.map(fn
-          {_var, name, :input, _, _, _, default, _} ->
-        if default == :__mazurka_unspecified do
-          {name, {:input, Utils.hidden_var(name)}}
-        else
-          {name, {:input, Macro.var(name, nil)}}
-        end
-
-        {_var, name, input_type, _, _, _, _default, _} ->
-          {name, {input_type, Macro.var(name, nil)}}
-      end)
+      |> Mazurka.Resource.Utils.Scope.scope_filter_by(bindings: true)
+      |> Mazurka.Resource.Utils.Scope.scope_as_name_type_binding_list(&Mazurka.Resource.Utils.Scope.scope_is_hidden/1)
       |> Map.new()
       |> Enum.to_list()
 

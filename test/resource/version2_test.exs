@@ -26,7 +26,7 @@ defmodule Test.Mazurka.Resource.Version2 do
         {:ok, true}
       end
 
-      param param1, option: true, validation: fn x ->
+      param param1, option: true, condition: fn x ->
         {:ok, x}
       end
       #      input input2
@@ -71,7 +71,8 @@ defmodule Test.Mazurka.Resource.Version2 do
           # param1 |> IO.inspect(label: "foo!")
           # Input.all() |> IO.inspect(label: "all")
           %{
-            name: name
+            name: name,
+            input: input1
           }
         end
       end
