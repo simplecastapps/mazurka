@@ -127,11 +127,12 @@ defmodule Mazurka.Resource.Input do
     * `option` if true, use options passed into this route with the same name. If an atom, use options passed in of that name. If list of atoms, use first option passed in that matches. If no matches, do validation / condition as normal with the value that the user passed in.
 
 
-    Since it is an input, which means by definition that it is optional, it will not be brought into scope unless it both has had its validation or condition run and has a default value set. You can find out if it was sent via `#{
+    Since it is an input, which means by definition that it is optional, it will not be brought into scope unless it both has had its validation or condition run and has a default value or if it is marked as required. You can find out if it was sent via `#{
     __MODULE__
   }.all()` which returns a map of variables that were sent, and you can access its value that way.
 
-    There must be at least one validation or condition but not both. If the variable is validated and has no default, then it will not be brought into scope in affordances or in any other condition related code. This is to prevent referencing an unvalidated variable in a context where validation did not occur.
+  There must be at least one validation or condition but not both. If the variable is validated and has no default and is not required, then it will not be brought
+  into scope in affordances or in any other condition related code. This is to prevent referencing an unvalidated variable in a context where there is no sensible value.
   """
   defmacro input(w, opts \\ []) do
     module = __CALLER__.module
