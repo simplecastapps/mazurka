@@ -156,11 +156,13 @@ defmodule Mazurka.Resource.Input do
             # - code block always run, nil if not specified
             # `input input1, fn x -> x end
             # `input input1, &IO.puts/1
+            # We use identity function to trick compiler into not warning
+            # on case statements that work on things other than nil
             {op, _, _} = block when op in [:fn, :&] ->
               [
                 default:
                   quote do
-                    unquote(block).(nil)
+                    unquote(block).(Function.identity(nil))
                   end,
                 condition:
                   quote do
