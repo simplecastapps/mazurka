@@ -72,9 +72,9 @@ defmodule Mazurka.Resource.Let do
     validation = fn_to_block(Keyword.get(opts, :validation, :__mazurka_unspecified))
 
     # `let foo do 1232 end` is equivalent to `let foo, condition: {:ok, 1232}`
-    condition_block = opts |> Keyword.fetch(:do) |> case do
-      :error -> :__mazurka_unspecified
-      {:ok, res} -> quote do {:ok, unquote(res)} end
+    {was_do, condition_block} = opts |> Keyword.fetch(:do) |> case do
+      :error -> {false, :__mazurka_unspecified}
+      {:ok, res} -> {true, quote do {:ok, unquote(res)} end}
     end
     condition = fn_to_block(Keyword.get(opts, :condition, condition_block))
 
@@ -83,6 +83,12 @@ defmodule Mazurka.Resource.Let do
         raise "You can't specify both a validation and condition block in the same let"
       validation == :__mazurka_unspecified && condition == :__mazurka_unspecified ->
         raise "You must specify at least one of a validation or condition in this let"
+
+      # if you are taking a field from options there's no way to pass that result into
+      # a :condition / :validation (do blocks and = are okay because they can't fail)
+      option_fields != [] && !was_do && (validation != :__mazurka_unspecified || condition != :__mazurka_unspecified) ->
+        raise "You cannot specify conditions / validations and option at the same time"
+
       validation != :__mazurka_unspecified -> {:validation, validation}
       true -> {:condition, condition}
     end
