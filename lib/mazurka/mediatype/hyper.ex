@@ -34,6 +34,12 @@ defmodule Mazurka.Mediatype.Hyper do
             "method" => Map.get(affordance, :method),
             "action" => to_string(affordance)
           } |> Map.merge(props)
+        {%Mazurka.Affordance{} = affordance, %{input: input} = props} ->
+          %{
+            "method" => Map.get(affordance, :method),
+            "action" => to_string(affordance),
+            "input" => input
+          } |> Map.merge(props |> Map.delete(:input))
         {%Mazurka.Affordance{method: "GET"} = affordance, props} ->
           %{
             "href" => to_string(affordance)
