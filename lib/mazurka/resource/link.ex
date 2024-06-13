@@ -65,7 +65,7 @@ defmodule Mazurka.Resource.Link do
       case module do
         nil when warn != false ->
           file_line = Exception.format_file_line(__ENV__.file, __ENV__.line)
-          Logger.warn("#{file_line} resource #{inspect(resource)} not found")
+          Logger.warning("#{file_line} resource #{inspect(resource)} not found")
           nil
         nil ->
           nil
